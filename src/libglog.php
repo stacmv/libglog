@@ -29,11 +29,19 @@ function glog_dosyslog($message) {								// Пишет сообщение в с
         if (!is_dir(dirname(GLOG_SYSLOG))) mkdir(dirname(GLOG_SYSLOG), 0777, true);
         // Блокируем файл
         $syslog = GLOG_SYSLOG;
+        
+        $data = array(
+            @$_SERVER["REMOTE_ADDR"],
+            date("Y-m-d\TH:i:s"),
+            $message,
+        );
+        
+        $message = implode("\t", $data) . "\n";
     
-        if (file_put_contents($syslog,date("Y-m-d\TH:i:s")."\t".$message."\n", FILE_APPEND) === false) {
+        if (file_put_contents($syslog, $message, FILE_APPEND) === false) {
             $Subject = "Ошибка: ".$_SERVER['HTTP_HOST'].$_SERVER['SCRIPT_NAME'];
             $extraheader = "Content-type: text/plain; charset=UTF-8";
-            $message= "Невозможно записать данные в системный лог '".$syslog."'!\nНе записанные  данные:\n".date("Y-m-d\TH:i:s")."\t".$message."\n";
+            $message= "Невозможно записать данные в системный лог '".$syslog."'!\nНе записанные  данные:\n".$message."\n";
             if ($_SERVER["HTTP_HOST"] == "localhost"){
                 die("<h2>".__FUNCTION__.": ".$subject."</h2><p>".$message."</p>");
             }else{
@@ -468,7 +476,7 @@ function glog_render($template_file, $data){
     
     return $HTML;	
 };
-function glog_rusdate($date) {									/* Принимает дату в формате "гггг-мм-дд" и возвращает в формате "дд.мм.гггг" */
+function glog_rusdate($date, $withTime = false) {				/* Принимает дату в формате "гггг-мм-дд" и возвращает в формате "дд.мм.гггг" */
     
     if (preg_match("/\d\d\.\d\d\.\d{4}/", $date)) return $date; // дата уже в формате дд.мм.гггг
     if ($date == "all") return "";
@@ -479,7 +487,16 @@ function glog_rusdate($date) {									/* Принимает дату в фор�
     if (!checkdate($m,$d,$y)) {
         return false;
     } else {
-        return "$d.$m.$y";
+    
+        if ($withTime){
+            $h = substr($date,11,2);
+            $i = substr($date,14,2);
+            $s = substr($date,17,2);
+            
+            return "$d.$m.$y $h:$i:$s";
+        }else{
+            return "$d.$m.$y";
+        }
     }; 
 };
 function glog_send($record, $mode){
