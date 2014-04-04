@@ -1,6 +1,6 @@
 <?php
 
-define("LIBGLOG_VERSION", "0.6.0");
+define("LIBGLOG_VERSION", "0.6.1");
 define("LIBGLOG_REVISION", '$Rev$');
 
 error_reporting(E_ALL);
@@ -1047,6 +1047,28 @@ function glog_get_age($anketa, $add_units = false) { 					// Возвращае�
         $age = $age." ".$suf;
     };
     return $age;
+};
+function glog_codify($str){                                              // Возвращает строку в виде, пригодном для использования в именах файлов, url, css-классах, ... .
+	$result = glog_translit($str);
+    
+	$result = str_replace(array("+","&"," ",",",":",";",".",",","/","\\","(",")","'","\""),array("_plus_","_and_","-","-","-","-"),$result); 
+    
+	$result = strtolower($result);
+    
+	$result = urlencode($result);
+	
+	return $result;
+};
+function glog_translit($s) {                                            //Возвращает транслитирированную строку.
+    $result = $s;
+
+    $result = str_replace(array("а","б","в","г","д","е","ё","з","и","й","к","л","м","н","о","п","р","с","т","у","ф","х","ы","э"), array("a","b","v","g","d","e","e","z","i","j","k","l","m","n","o","p","r","s","t","u","f","h","y","e"), $result);
+    $result = str_replace(array("А","Б","В","Г","Д","Е","Ё","З","И","Й","К","Л","М","Н","О","П","Р","С","Т","У","Ф","Х","Ы","Э"), array("A","B","V","G","D","E","E","Z","I","J","K","L","M","N","O","P","R","S","T","U","F","H","Y","E"), $result);
+	
+	$result = str_replace(array("ж","ц","ч","ш","щ","ю","я","ъ","ь"), array("zh","ts","ch","sh","sch","yu","ya"),$result);
+	$result = str_replace(array("Ж","Ц","Ч","Ш","Щ","Ю","Я","Ъ","Ь"), array("ZH","TS","CH","SH","SCH","YU","YA"),$result);
+
+	return $result;
 };
 
 
