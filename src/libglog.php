@@ -7,7 +7,7 @@ error_reporting(E_ALL);
 
 if(!defined("GLOG_DO_SYSLOG")) define ("GLOG_DO_SYSLOG", true);
 if(!defined("GLOG_SYSLOG")) define ("GLOG_SYSLOG","glog_syslog_".date("Y-m-d").".log.txt");
-if(!defined("GLOG_DIR")) define ("GLOG_DIR","./");
+if(!defined("DATA_DIR")) define ("DATA_DIR","./");
 if(!defined("GLOG_FILE_PREFIX")) define("GLOG_FILE_PREFIX","gelog_");
 if(!defined("GLOG_FILE_SUFFIX")) define("GLOG_FILE_SUFFIX",".log.txt");
 if(!defined("GLOG_FILE_ENCODING")) define("GLOG_FILE_ENCODING", "UTF-8");
@@ -18,8 +18,8 @@ if(!defined("EMAIL")) define("EMAIL","stacmv+libglog@gmail.com");
 
 if(!defined("DIAGNOSTICS_MODE")) define("DIAGNOSTICS_MODE",false);
 
-if (!is_dir(GLOG_DIR)) mkdir(GLOG_DIR, 0777, true);
-if (!is_dir(GLOG_DIR)) die("libglog: code: GLOG_DIR");
+if (!is_dir(DATA_DIR)) mkdir(DATA_DIR, 0777, true);
+if (!is_dir(DATA_DIR)) die("libglog: code: DATA_DIR");
 
 if(!isset($CFG)) die("libglog: code: CFG"); // конфигурация лэндинга одлжна быть определена в вызывающей программе.
 
@@ -214,7 +214,7 @@ function glog_get_dates($asc=false, $start_date="", $end_date="") {	    // Во�
     // Ищем лог файлы в текущем каталоге и запоминаем их даты в dates[] 
     $dates = array();
     
-    $search_pattern = GLOG_DIR . GLOG_FILE_PREFIX . "*" . GLOG_FILE_SUFFIX;
+    $search_pattern = DATA_DIR . GLOG_FILE_PREFIX . "*" . GLOG_FILE_SUFFIX;
     $files = glob($search_pattern);
     
     if (!empty($files)){
@@ -244,7 +244,7 @@ function glog_get_dates($asc=false, $start_date="", $end_date="") {	    // Во�
 function glog_get_filename($curdate, $checkFileExists=false) {// Возвращает имя файла-лога за дату $curdate
 // При checkFileExists=true возвращается false, если файл не существует.
     
-    $result = GLOG_DIR.GLOG_FILE_PREFIX.$curdate.GLOG_FILE_SUFFIX;
+    $result = DATA_DIR.GLOG_FILE_PREFIX.$curdate.GLOG_FILE_SUFFIX;
     
     if ($checkFileExists) {
         $result = (glog_is_glog($result)==$curdate)?$result:false;
@@ -375,7 +375,7 @@ function glog_prepare_data($record){						// Возвращает данные �
     };
     return $data;	
 };
-function glog_read($curdate, $state) {						// Читает файл GLOG_DIR/glog$curdate.txt и возвращает список анкет со статусом $state за нужную дату.
+function glog_read($curdate, $state) {						// Читает файл DATA_DIR/glog$curdate.txt и возвращает список анкет со статусом $state за нужную дату.
 //	В процессе чтения удаляются дуюликаты записей (ID которых совпадает)
 //
 //	$state: - битовое поле
@@ -410,7 +410,7 @@ function glog_read($curdate, $state) {						// Читает файл GLOG_DIR/gl
     $IDs = ""; //Список существующих в файле ID.
     $doubles_found = false; // будут true, если найдутся дубликаты анктет, их надо будет удалить.
     
-    $filename = GLOG_DIR.GLOG_FILE_PREFIX.$curdate.GLOG_FILE_SUFFIX;
+    $filename = DATA_DIR.GLOG_FILE_PREFIX.$curdate.GLOG_FILE_SUFFIX;
     if (glog_is_glog($filename) !== false) {
         $log = file($filename);
        
@@ -679,13 +679,13 @@ function glog_write($curdate, $record){ 					/* Записывает анкет�
     Если анкета с таким id существует, она заменяется. 
     $curdate - дата файла-лога;
     $record - анкета (данные формы, история изменений, дата, id,..)
-    GLOG_DIR - каталог с лог-файлами.
+    DATA_DIR - каталог с лог-файлами.
     
     Возвращает true в случае успеха и false в случае неудачи.
 */
     $lock_suffix = ".glog_write_lock";
     
-    $file = GLOG_DIR.GLOG_FILE_PREFIX.$curdate.GLOG_FILE_SUFFIX;
+    $file = DATA_DIR.GLOG_FILE_PREFIX.$curdate.GLOG_FILE_SUFFIX;
     /* Блокируем файл */
     $new_log = fopen($file,"a+");
     //if (!flock($new_log, LOCK_EX)){
@@ -780,7 +780,7 @@ function glog_writesafe ($curdate, $record, $email=EMAIL) {	/* Записыва�
         
         $Subject = "Ошибка: ".$_SERVER['HTTP_HOST'];
         $extraheader = "Content-type: text/plain; charset=windows-1251";
-        $message= "Невозможно открыть файл ".GLOG_DIR."/glog".date("Y-m-d").".txt для обновления лога.\nURL, вызвавший ошибку: ".$_SERVER["QUERY_STRING"].".\nНе записанные данные:\n\n".Serialize($record);
+        $message= "Невозможно открыть файл ".DATA_DIR."/glog".date("Y-m-d").".txt для обновления лога.\nURL, вызвавший ошибку: ".$_SERVER["QUERY_STRING"].".\nНе записанные данные:\n\n".Serialize($record);
         mail($email,$Subject,$message,$extraheader);
     };
     return true;
@@ -998,7 +998,7 @@ function glog_export($anketas, $format="php", $fields="", $params="") { //  Во
     
 };
 // ----------------
-function glog_get_age($anketa, $add_units = false) { 					// Возвращает текущий возраст в формате строки "n" ($add_units = false) или "n лет" ($add_units = true). Принимает анкету.
+function glog_get_age($anketa, $add_units = false) { 				// Возвращает текущий возраст в формате строки "n" ($add_units = false) или "n лет" ($add_units = true). Принимает анкету.
     
     $age = "";
     
@@ -1048,7 +1048,7 @@ function glog_get_age($anketa, $add_units = false) { 					// Возвращае�
     };
     return $age;
 };
-function glog_codify($str){                                              // Возвращает строку в виде, пригодном для использования в именах файлов, url, css-классах, ... .
+function glog_codify($str){                                         // Возвращает строку в виде, пригодном для использования в именах файлов, url, css-классах, ... .
 	$result = glog_translit($str);
     
 	$result = str_replace(array("+","&"," ",",",":",";",".",",","/","\\","(",")","'","\""),array("_plus_","_and_","-","-","-","-"),$result); 
@@ -1059,7 +1059,7 @@ function glog_codify($str){                                              // Во
 	
 	return $result;
 };
-function glog_translit($s) {                                            //Возвращает транслитирированную строку.
+function glog_translit($s) {                                        //Возвращает транслитирированную строку.
     $result = $s;
 
     $result = str_replace(array("а","б","в","г","д","е","ё","з","и","й","к","л","м","н","о","п","р","с","т","у","ф","х","ы","э"), array("a","b","v","g","d","e","e","z","i","j","k","l","m","n","o","p","r","s","t","u","f","h","y","e"), $result);
@@ -1070,6 +1070,18 @@ function glog_translit($s) {                                            //Воз
 
 	return $result;
 };
+function glog_show_phone($phone_cleared){ 						    // Форматирует номер телефона (только цифры) к  виду (123) 456-78-90
+	return "(" . substr($phone_cleared, 0, 3) . ") " . substr($phone_cleared, 3, 3) . "-" . substr($phone_cleared, 6, 2) . "-" . substr($phone_cleared, 8, 3);
+}
+function glog_clear_phone($phone){                              	// возвращает телефон в формате 9031234567 - только цифры
+	$phone_cleared = "";
+	for($i=0,$l=strlen($phone); $i<$l; $i++){
+		if ( ($phone{$i} >= '0') && ($phone{$i} <= '9') ){
+			$phone_cleared .= $phone{$i};
+		};
+	};
+	return $phone_cleared;
+}
 
 
 // ----------------
