@@ -1,6 +1,6 @@
 <?php
 
-define("LIBGLOG_VERSION", "0.6.1");
+define("LIBGLOG_VERSION", "0.6.2");
 define("LIBGLOG_REVISION", '$Rev$');
 
 error_reporting(E_ALL);
@@ -606,6 +606,15 @@ function glog_send($record, $mode){
                 
                     $record = glog_mark_record($record, $record["host"], $state, $success_str.".IP:".@$_SERVER["SERVER_ADDR"]);
                                             
+                    break;
+                case "fake":
+                    $state = 128;
+                    $success_str = "Заявка помечена как отправленная";
+                    if (empty($record["sent"])) $record["sent"] = array();
+                    if (empty($record["sent"][$mode])) $record["sent"][$mode] = "";
+                    if ($state == 128) $record["sent"][$mode] = time();
+                
+                    $record = glog_mark_record($record, $record["host"], $state, $success_str.".IP:".@$_SERVER["SERVER_ADDR"]);
                     break;
                 default:
                     if (function_exists("send_".$mode)){
