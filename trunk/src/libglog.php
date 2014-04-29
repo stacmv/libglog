@@ -1,6 +1,6 @@
 <?php
 
-define("LIBGLOG_VERSION", "0.6.2");
+define("LIBGLOG_VERSION", "0.6.3");
 define("LIBGLOG_REVISION", '$Rev$');
 
 error_reporting(E_ALL);
@@ -481,9 +481,9 @@ function glog_rusdate($date, $withTime = false) {				/* Принимает да�
     if (preg_match("/\d\d\.\d\d\.\d{4}/", $date)) return $date; // дата уже в формате дд.мм.гггг
     if ($date == "all") return "";
     if ($date == "toModerate") return "";
-    $m=substr($date,5,2);
-    $d=substr($date,8,2);
-    $y=substr($date,0,4);
+    $m = (int) substr($date,5,2);
+    $d = (int) substr($date,8,2);
+    $y = (int) substr($date,0,4);
     if (!checkdate($m,$d,$y)) {
         return false;
     } else {
