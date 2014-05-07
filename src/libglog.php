@@ -481,17 +481,17 @@ function glog_rusdate($date, $withTime = false) {				/* Принимает да�
     if (preg_match("/\d\d\.\d\d\.\d{4}/", $date)) return $date; // дата уже в формате дд.мм.гггг
     if ($date == "all") return "";
     if ($date == "toModerate") return "";
-    $m = (int) substr($date,5,2);
-    $d = (int) substr($date,8,2);
+    $m = (int) substr($date,5,2); $m = str_pad($m, 2, "0", STR_PAD_LEFT);
+    $d = (int) substr($date,8,2); $d = str_pad($d, 2, "0", STR_PAD_LEFT);
     $y = (int) substr($date,0,4);
     if (!checkdate($m,$d,$y)) {
         return false;
     } else {
     
         if ($withTime){
-            $h = substr($date,11,2);
-            $i = substr($date,14,2);
-            $s = substr($date,17,2);
+            $h = substr($date,11,2); $h = str_pad($h, 2, "0", STR_PAD_LEFT);
+            $i = substr($date,14,2); $i = str_pad($i, 2, "0", STR_PAD_LEFT);
+            $s = substr($date,17,2); $s = str_pad($s, 2, "0", STR_PAD_LEFT);
             
             return "$d.$m.$y $h:$i:$s";
         }else{
