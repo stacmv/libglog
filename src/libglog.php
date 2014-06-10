@@ -1,6 +1,6 @@
 <?php
 
-define("LIBGLOG_VERSION", "0.6.3");
+define("LIBGLOG_VERSION", "0.6.4");
 define("LIBGLOG_REVISION", '$Rev$');
 
 error_reporting(E_ALL);
@@ -97,6 +97,7 @@ function glog_filter_op($records,$op, $action) {			// Возвращает сп�
     $f_records ="";
     for ($i=0;$i<count($records);$i++) {
         $ch = count($records[$i]['history']);
+        if ( ! $ch ) continue; // запись без истории
         if ($action[1] == "final") {
             // Смотрим последнюю строку истории работы с анкетой
             if (!isset($records[$i]['history'][$ch-1]['state'])) continue;
@@ -420,8 +421,15 @@ function glog_read($curdate, $state) {						// Читает файл DATA_DIR/gl
             $record = @Unserialize($log[$i]);
             $id = @$record['id'];
             if ( ! $id ) {
-                glog_dosyslog(__FUNCTION__.": ERROR: Found record without id in file '".$filename."': '".$log[$i]."'. Should be discarded.");
-                continue;
+                if (function_exists("create_id")){
+                    $id = create_id($record, true);
+                    glog_dosyslog(__FUNCTION__.": ERROR: Found record without id in file '".$filename."': '".$log[$i]."'. Trying to generate id: '".$id."'.");
+                    if ($id) $record["id"] = $id;
+                    else{
+                        glog_dosyslog(__FUNCTION__.": ERROR: Found record without id in file '".$filename."': '".$log[$i]."'. Create_id() does not exist, so record should be discarded.");
+                        continue;
+                    };
+                };
             }
             if (empty($IDs[$id])) {
                 $IDs[$id] = $id;
@@ -431,8 +439,8 @@ function glog_read($curdate, $state) {						// Читает файл DATA_DIR/gl
                 glog_dosyslog(__FUNCTION__.": ERROR: Found record with non-unique id (".$id.") in file '".$filename."': '".$log[$i]."'. Should be discarded.");
                 continue;
             }; 
-            $history = $record["history"];
-            $last_state = $history[count($history)-1]["state"];
+            $history = ! empty($record["history"]) ? $record["history"] : array();
+            $last_state = !empty($history) ? $history[count($history)-1]["state"] : 0;
             if ($state==="all") {
                 $filtered_records[] = $record;
             } elseif ($last_state === $state) {
@@ -467,7 +475,7 @@ function glog_render($template_file, $data){
             
         $template = preg_replace("/%%[^%]+%%/","",$template); // удаляем все placeholders для которых нет данных во входных параметрах.
         $HTML = $template;
-        glog_dosyslog(__FUNCTION__.": NOTICE: Успешно применен шаблон '".$template_file."'.");
+        //glog_dosyslog(__FUNCTION__.": NOTICE: Успешно применен шаблон '".$template_file."'.");
     
     }else{
 		$HTML = "<p><b>Ошибка!</b> Файл шаблона не найден".(DIAGNOSTICS_MODE ? " - '".$template_file."'" : "")."</p>";
@@ -692,6 +700,12 @@ function glog_write($curdate, $record){ 					/* Записывает анкет�
     
     Возвращает true в случае успеха и false в случае неудачи.
 */
+
+    if ( empty($record['id']) ){
+        glog_dosyslog(__FUNCTION__ . ": ERROR: Не задан id записи. '".serialize($record)."'. Не будет записано. REQUEST_URI:'".$_SERVER["REQUEST_URI"]."'.");
+    };
+
+
     $lock_suffix = ".glog_write_lock";
     
     $file = DATA_DIR.GLOG_FILE_PREFIX.$curdate.GLOG_FILE_SUFFIX;
@@ -702,7 +716,7 @@ function glog_write($curdate, $record){ 					/* Записывает анкет�
         $wait_till = time() + 20; // ждем освобождения файла 20 секунд.
         while(file_exists($file.$lock_suffix)){
             if (time() > $wait_till){
-                glog_dosyslog(__FUNCTION__.": Превышен таймаут блокировки файла $file.");
+                glog_dosyslog(__FUNCTION__.": WARNING: Превышен таймаут блокировки файла $file.");
                 return false;
             };
         };            
@@ -766,8 +780,9 @@ function glog_writesafe ($curdate, $record, $email=EMAIL) {	/* Записыва�
     Если запись не выполнена, сообщение об ошибке и незаписанные данные, во избежание потери,
     отправляются на e-mail.
 */
+    $dbt    = debug_backtrace();
+    $callee = $dbt[1]["function"] . (!empty($dbt[2]) ? " < ".$dbt[2]["function"] : ""); // вызывающая функция; для целей логирования.
 
-    glog_dosyslog("NOTICE: GLOG_WRITEGLOGSAFE(): Попытка записи анкеты id='".$record['id']."' за дату '$curdate'.");
     // Ниже используется тот факт, что glog_rusdate возвращает false для неправильно заданных дат. 
     if (!glog_rusdate($curdate)) { // Если $curdate - виртуальная дата, например "toModerate" или "all", то берем дату из самой анкеты.
         if (isset($record['date'])) {
@@ -780,17 +795,19 @@ function glog_writesafe ($curdate, $record, $email=EMAIL) {	/* Записыва�
             $curdate = date("Y-m-d");
             $record['date'] = date("Y-m-d\TH:i:s");
         };
-        glog_dosyslog("NOTICE: GLOG_WRITEGLOGSAFE(): Скорректирована дата файла для анкеты с id='".$record['id']."' на дату '$curdate'.");
+        glog_dosyslog(__FUNCTION__ . ": NOTICE: Скорректирована дата файла для анкеты с id='".$record['id']."' на дату '$curdate'.");
     };
     
 
     if (glog_write($curdate, $record) == false)	{
-        glog_dosyslog("ERROR: GLOG_WRITEGLOGSAFE(): Ошибка сохранения записи с id='".$record['id']."' в файле на дату '$curdate'.");
+        glog_dosyslog(__FUNCTION__ . ": ERROR: ".$callee.": Ошибка сохранения записи с id='".$record['id']."' в файле на дату '$curdate'.");
         
         $Subject = "Ошибка: ".$_SERVER['HTTP_HOST'];
         $extraheader = "Content-type: text/plain; charset=windows-1251";
         $message= "Невозможно открыть файл ".DATA_DIR."/glog".date("Y-m-d").".txt для обновления лога.\nURL, вызвавший ошибку: ".$_SERVER["QUERY_STRING"].".\nНе записанные данные:\n\n".Serialize($record);
         mail($email,$Subject,$message,$extraheader);
+    }else{
+        glog_dosyslog(__FUNCTION__ . ": NOTICE: ".$callee.": Анкета id='".$record['id']."' за дату '$curdate' успешно сохранена.");
     };
     return true;
 };
