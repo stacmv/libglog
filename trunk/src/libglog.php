@@ -1,6 +1,6 @@
 <?php
 
-define("LIBGLOG_VERSION", "0.6.4");
+define("LIBGLOG_VERSION", "0.6.5");
 define("LIBGLOG_REVISION", '$Rev$');
 
 error_reporting(E_ALL);
@@ -545,34 +545,42 @@ function glog_send($record, $mode){
                             
                             // Пытаемся отправить письма
                             
-                            $template = file_get_contents(GLOG_TEMPLATES_DIR.$CFG["SEND"][$mode."_template"].".htm");
+                            $template_filename = GLOG_TEMPLATES_DIR.$CFG["SEND"][$mode."_template"].".htm";
                             
-                            if (empty($template)) glog_dosyslog(__FUNCTION__.": ERROR: Шаблон письма пуст - ".GLOG_TEMPLATES_DIR.$CFG["SEND"][$mode."_template"].".htm");
+                            $data = glog_prepare_data($record);
+                            if ( function_exists("show_prepare_data") ) $data = array_merge( $data, show_prepare_data($record, $mode) );
+                            
+                            $message = glog_render($template_filename, $data );
+                            
+                            
+                            // $template = file_get_contents(GLOG_TEMPLATES_DIR.$CFG["SEND"][$mode."_template"].".htm");
+                            
+                            // if (empty($template)) glog_dosyslog(__FUNCTION__.": ERROR: Шаблон письма пуст - ".GLOG_TEMPLATES_DIR.$CFG["SEND"][$mode."_template"].".htm");
                             
                             
                             // parse template.
         
-                            $template = str_replace("\r\n", "\n", $template);
-                            $template = str_replace("\r", "\n", $template);
+                            // $template = str_replace("\r\n", "\n", $template);
+                            // $template = str_replace("\r", "\n", $template);
                             
                             // Подстановка данных формы
-                            foreach($record["formdata"] as $k=>$v){
-                                if ($k==$record["full_phone_field"]) $v = "+7 (".substr($v,0,3).") ".substr($v,3,3)."-".substr($v,6,2)."-".substr($v,8,2);
-                                $template = str_replace("%%form_".$k."%%", $v, $template);
-                            };
+                            // foreach($record["formdata"] as $k=>$v){
+                                // if ($k==$record["full_phone_field"]) $v = "+7 (".substr($v,0,3).") ".substr($v,3,3)."-".substr($v,6,2)."-".substr($v,8,2);
+                                // $template = str_replace("%%form_".$k."%%", $v, $template);
+                            // };
                             
                             // Подстановка данных источника
-                            foreach($record["src"] as $k=>$v){
-                                $template = str_replace("%%src_".$k."%%", $v, $template);
-                            };
+                            // foreach($record["src"] as $k=>$v){
+                                // $template = str_replace("%%src_".$k."%%", $v, $template);
+                            // };
                             
                             // Подстановка данных анкеты
-                            $template = str_replace("%%id%%", $record["id"], $template);
-                            $template = str_replace("%%date%%", $record["date"], $template);    
-                            $template = str_replace("%%IP%%", $record["IP"], $template);
-                            $template = str_replace("%%host%%", $record["host"], $template);    
+                            // $template = str_replace("%%id%%", $record["id"], $template);
+                            // $template = str_replace("%%date%%", $record["date"], $template);    
+                            // $template = str_replace("%%IP%%", $record["IP"], $template);
+                            // $template = str_replace("%%host%%", $record["host"], $template);    
                             
-                            $template = preg_replace("/%%[^%]+%%/","",$template); // удаляем все placeholders для которых нет данных во входных параметрах.
+                            // $template = preg_replace("/%%[^%]+%%/","",$template); // удаляем все placeholders для которых нет данных во входных параметрах.
                             
                             
                             $to = explode(",",$CFG["SEND"][$mode."_to"]); foreach($to as $k=>$v) $to[$k] = trim($v);
@@ -582,7 +590,7 @@ function glog_send($record, $mode){
                             $headers = "MIME-Version: 1.0\r\n"; 
                             $headers .= "content-type: text/html; charset=UTF-8\r\nFROM: ".$from."\r\nREPLY-TO: ".$from;
                             
-                            $message = $template;
+                            // $message = $template;
 
                             
                             $success_email = array(); // список email'ов, на которые успешно отправлена анкета.
