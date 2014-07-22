@@ -1,9 +1,11 @@
 <?php
 
-define("LIBGLOG_VERSION", "0.6.5");
+define("LIBGLOG_VERSION", "0.6.6");
 define("LIBGLOG_REVISION", '$Rev$');
 
 error_reporting(E_ALL);
+
+require_once dirname(__FILE__) . "libglog_util.php";
 
 if(!defined("GLOG_DO_SYSLOG")) define ("GLOG_DO_SYSLOG", true);
 if(!defined("GLOG_SYSLOG")) define ("GLOG_SYSLOG","glog_syslog_".date("Y-m-d").".log.txt");
@@ -23,36 +25,162 @@ if (!is_dir(DATA_DIR)) die("libglog: code: DATA_DIR");
 
 if(!isset($CFG)) die("libglog: code: CFG"); // конфигурация лэндинга одлжна быть определена в вызывающей программе.
 
-function glog_dosyslog($message) {								// Пишет сообщение в системный лог при включенной опции GLOG_DO_SYSLOG.
-
-    if (GLOG_DO_SYSLOG) {
-        if (!is_dir(dirname(GLOG_SYSLOG))) mkdir(dirname(GLOG_SYSLOG), 0777, true);
-        // Блокируем файл
-        $syslog = GLOG_SYSLOG;
-        
-        $data = array(
-            @$_SERVER["REMOTE_ADDR"],
-            date("Y-m-d\TH:i:s"),
-            $message,
-        );
-        
-        $message = implode("\t", $data) . "\n";
+function glog_export($anketas, $format="php", $fields="", $params="") { //  Возвращает данные анкет в виде таблицы
+// format = php | php-serial | json | tsv
+    global $ERROR;
     
-        if (file_put_contents($syslog, $message, FILE_APPEND) === false) {
-            $Subject = "Ошибка: ".$_SERVER['HTTP_HOST'].$_SERVER['SCRIPT_NAME'];
-            $extraheader = "Content-type: text/plain; charset=UTF-8";
-            $message= "Невозможно записать данные в системный лог '".$syslog."'!\nНе записанные  данные:\n".$message."\n";
-            if ($_SERVER["HTTP_HOST"] == "localhost"){
-                die("<h2>".__FUNCTION__.": ".$subject."</h2><p>".$message."</p>");
-            }else{
-            mail(EMAIL,$Subject,$message,$extraheader);
+    $log = array();
+    
+
+    if (!$anketas || empty($anketas)) {
+        $ERROR[] = __FUNCTION__.": пустой список анкет.";
+        return ($format == "php" ? array() : "");
+    };
+    
+    if (empty($fields)){
+        $fields = array(
+            "id" => "id",
+            "Дата" => "date",
+            "Ф.И.О." => "full_name",
+            "Телефон" => "full_phone",
+            "Регион" => "region",
+            "Пол" => "sex",
+            "Возраст" => "age",
+            "Статус" => "state"
+        );
+    };
+    
+    if (!empty($params["state"])){
+        $state = $params["state"];
+    }else{
+        $state = "all";
+    };
+                
+    if ( ($state==32) || ($state==2) ) { // для отчета по удаленным анкетам
+        if (isset($fields["Статус"])){
+            $fields["Причина удаления"] = "comment";
+        }else{
+            die("ERROR: ".__FUNCTION__.": Mandatory item in fields array not found.");
+        };
+    };		
+    
+    foreach ($anketas as $anketa) {
+        $srca = @$anketa["src"];
+        $aid = @$srca["aid"];
+        $fid = @$srca["fid"];
+        
+        if ( ! empty($params["aid"]) && ( $params["aid"] !== $aid ) ) continue; // отборр лидов заданного партнера
+
+        $date = substr(@$anketa["date"],0,10);
+        $time = substr(@$anketa["date"],11);
+        $campaign = @trim(stripslashes(@$srca["campaign"])); //if(!$campaign) $campaign = "&nbsp;";
+        $keyword = @trim(stripslashes(@$srca["keyword"])); //if(!$keyword) $keyword = "&nbsp;";
+        $refsite = @trim(stripslashes(@$srca["refsite"])); //if(!$refsite) $refsite = "&nbsp;";
+        $matches = array();
+        if (@preg_match("/([A-Z]{2})$/",@$srca["src"],$matches) == 1){
+            $gorod = $matches[1];
+        } else {
+            $gorod = "";
+        };            
+        $region = trim(@$anketa["formdata"][$anketa["region_field"]]); //if(!$region) $region = "&nbsp;";
+
+        if ( ($state==32) || ($state==2) ){ // для отчета по удаленным анкетам
+            $comment = glog_get_state_comment($anketa);
+            if ($state==2){
+                $comment = substr($comment, strpos($comment, ":")+1); // удаляем имя оператора из комментария.
+            }
+        }
+            
+        $cur_state = glog_get_state_name(glog_get_state($anketa));
+        
+        
+        $id = @$anketa["id"];
+        $sex = @$anketa["formdata"][$anketa["sex_field"]];
+        $age = glog_get_age($anketa);
+        
+        $data = array();
+        foreach($fields as $k=>$v){
+            if( function_exists("export_field") ){
+                $data[$k] = call_user_func("export_field", $anketa, $v);
+            };
+            
+            if (empty($data[$k])){            
+                if (isset($anketa["formdata"][$v])){  							// явно заданное поле формы
+                    $data[$k] = $anketa["formdata"][$v];
+                }elseif(isset($anketa["formdata"][@$anketa[$v . "_field"]])){		// косвенно заданное поле формы
+                    $data[$k] = $anketa["formdata"][$anketa[$v . "_field"]];
+                }elseif(isset($anketa[$v])){ 									// свойство анкеты
+                    $data[$k] = $anketa[$v];
+                
+                }else{
+                    $data[$k] = "н/д";
+                };
+                
+                if(isset($$v)){												// специально вычисленное выше значение
+                    $data[$k] = $$v;
+                };
             };
         };
+        
+        
+         
+        // Перекодирование
+        if(GLOG_WORK_ENCODING != GLOG_FILE_ENCODING){
+            foreach($data as $k=>$v) if ($k!="Статус") $data[$k] = iconv(GLOG_FILE_ENCODING, GLOG_WORK_ENCODING, $v);
+        };
+        // ---------------
+        
+        switch ($format){
+            case "php":
+            case "php-serial":
+            case "json":
+            case "html":
+                $log[] = $data;
+                break;
+            case "tsv":
+                if (empty($log)){
+                    $header = implode("\t",array_keys($data));
+                    if(GLOG_WORK_ENCODING != GLOG_FILE_ENCODING){
+                        $header = iconv(GLOG_FILE_ENCODING, GLOG_WORK_ENCODING, $header);
+                    };
+                    $log[] = $header; // вставляем шапку таблицы первой строкой
+                };
+                $log[] = implode("\t",array_values($data));
+                break;
+        };
 
-        return true;
-    } else {
-        return false;
     };
+    
+    switch ($format){
+        case "php":
+            // do nothing
+            break;
+        case "php-serial":
+            $log = serialize($log);
+            break;
+        case "json":
+            $log = json_encode($log);
+            break;
+        case "tsv":
+            $log = implode("\n",$log);
+            break;
+        case "html":
+            if ( ! empty($log) ){
+                $HTML = "<table class='leads'>
+                            <thead><tr><th>#</th><th>" . implode("</th><th>", array_keys($log[0])) . "</th></tr></thead>";
+                foreach($log as $k=>$v){
+                    $HTML .= "<tr><td>".($k+1)."</td><td>" . implode("</td><td>", array_values($v)) . "</td></tr>";
+                };
+                $HTML .= "</table>";
+            }else{
+                $HTML = "<div class='alert alert-info'>Нет заявок за выбранный период.</div>";
+            }
+            $log = array("count"=>count($log), "HTML"=>$HTML);
+            break;
+    };
+
+    return $log;
+    
 };
 function glog_filter($records,$id) {						// Возвращает массив анкет, удовлетворяющих заданному фильтру.
     //	Фильтр:
@@ -127,7 +255,6 @@ function glog_filter_op($records,$op, $action) {			// Возвращает сп�
     };
     return $f_records;
 };
-
 function glog_filter_state($records, $state) {			// Возвращает список анкет со текущим (последним) статусом $state.
     if (!$records|| !$state) {return array();};
     
@@ -272,7 +399,6 @@ function glog_get_record($id, $curdate){
     
     return $record;
 }
-
 /**
  * Возвращает текущий статус анкеты 
  *
@@ -305,6 +431,59 @@ function glog_get_state($record, $default_state = 0, array $ignore_states = arra
     
     if ($k < 0) $result = $default_state;
     
+    return $result;
+};
+function glog_get_state_comment($anketa, array $ignore_states = array() ) { // Возвращает коментарий оператора последнего (текущего) статуса анкеты.
+    $result = false;
+    
+    if (!$anketa) return $result;
+    
+    $history = @$anketa['history'];
+    if (!$history) return $result;
+    
+    $k = count($history)-1;
+    if (isset($history[$k]["comment"])){
+        $result = $history[$k]["comment"];
+        $state = @$history[$k]["state"];
+    }
+    if ( ! empty($ignore_states) ){
+        while (in_array($state, $ignore_states) && ($k >= -1) ){ // Если $k < 0, значит нет подходящих статусов, например, все в списке игнорируемых.
+            --$k;
+            if (isset($history[$k]["comment"])){
+                $result = $history[$k]["comment"];
+                $state = @$history[$k]["state"];
+            }
+        };
+    }
+    
+    $matches = array();
+    preg_match("/\(([^\)]*)\)/",$result, $matches);
+    $result = isset($matches[1])?$matches[1]:$result;
+    
+    return $result;
+};
+function glog_get_state_name($state) { //возвращает наименование статуса анкеты по его коду.
+    global $glog_states; // статусы, устанавливаемые в клиентском коде
+    $result = "";
+    
+    if (!empty($glog_states)){
+        if (!empty($glog_states[$state])){
+            $result = $glog_states[$state];
+        }else{
+            $result = "Статус " . $state; 
+        };
+    }else{
+        switch ($state){
+            case 0: $result = "Не обработана"; break;
+            case 1: $result = "В работе"; break;
+            case 2: $result = "На модерации"; break;
+            case 4: $result = "Не заполнена"; break;
+            case 32: $result = "Удалена"; break;
+            case 64: $result = "Не приянята"; break;
+            case 128: $result = "Отправлена"; break;
+            default: $result = "Не известно ($state)";
+        };    
+    };
     return $result;
 };
 function glog_is_glog($file) {									/* Проверяет, является ли файл $file логом анкет для GEMONEY и возвращает дату лога, выделенную из имени файла в формате "год-месяц-день".
@@ -483,29 +662,6 @@ function glog_render($template_file, $data){
     };
     
     return $HTML;	
-};
-function glog_rusdate($date, $withTime = false) {				/* Принимает дату в формате "гггг-мм-дд" и возвращает в формате "дд.мм.гггг" */
-    
-    if (preg_match("/\d\d\.\d\d\.\d{4}/", $date)) return $date; // дата уже в формате дд.мм.гггг
-    if ($date == "all") return "";
-    if ($date == "toModerate") return "";
-    $m = (int) substr($date,5,2); $m = str_pad($m, 2, "0", STR_PAD_LEFT);
-    $d = (int) substr($date,8,2); $d = str_pad($d, 2, "0", STR_PAD_LEFT);
-    $y = (int) substr($date,0,4);
-    if (!checkdate($m,$d,$y)) {
-        return false;
-    } else {
-    
-        if ($withTime){
-            $h = substr($date,11,2); $h = str_pad($h, 2, "0", STR_PAD_LEFT);
-            $i = substr($date,14,2); $i = str_pad($i, 2, "0", STR_PAD_LEFT);
-            $s = substr($date,17,2); $s = str_pad($s, 2, "0", STR_PAD_LEFT);
-            
-            return "$d.$m.$y $h:$i:$s";
-        }else{
-            return "$d.$m.$y";
-        }
-    }; 
 };
 function glog_send($record, $mode){
     global $CFG; // настройки отправки анкет задаются в settings.php
@@ -699,7 +855,6 @@ function glog_track_lead($anketa, $track_mode="", $track_what="lead"){          
    
     return $anketa;
 };
-
 function glog_write($curdate, $record){ 					/* Записывает анкету в лог за дату $curdate, который должен существовать.
     Если анкета с таким id существует, она заменяется. 
     $curdate - дата файла-лога;
@@ -819,314 +974,3 @@ function glog_writesafe ($curdate, $record, $email=EMAIL) {	/* Записыва�
     };
     return true;
 };
-// ----------------
-function glog_get_state_comment($anketa, array $ignore_states = array() ) { // Возвращает коментарий оператора последнего (текущего) статуса анкеты.
-    $result = false;
-    
-    if (!$anketa) return $result;
-    
-    $history = @$anketa['history'];
-    if (!$history) return $result;
-    
-    $k = count($history)-1;
-    if (isset($history[$k]["comment"])){
-        $result = $history[$k]["comment"];
-        $state = @$history[$k]["state"];
-    }
-    if ( ! empty($ignore_states) ){
-        while (in_array($state, $ignore_states) && ($k >= -1) ){ // Если $k < 0, значит нет подходящих статусов, например, все в списке игнорируемых.
-            --$k;
-            if (isset($history[$k]["comment"])){
-                $result = $history[$k]["comment"];
-                $state = @$history[$k]["state"];
-            }
-        };
-    }
-    
-    $matches = array();
-    preg_match("/\(([^\)]*)\)/",$result, $matches);
-    $result = isset($matches[1])?$matches[1]:$result;
-    
-    return $result;
-};
-function glog_get_state_name($state) { //возвращает наименование статуса анкеты по его коду.
-    global $glog_states; // статусы, устанавливаемые в клиентском коде
-    $result = "";
-    
-    if (!empty($glog_states)){
-        if (!empty($glog_states[$state])){
-            $result = $glog_states[$state];
-        }else{
-            $result = "Статус " . $state; 
-        };
-    }else{
-        switch ($state){
-            case 0: $result = "Не обработана"; break;
-            case 1: $result = "В работе"; break;
-            case 2: $result = "На модерации"; break;
-            case 4: $result = "Не заполнена"; break;
-            case 32: $result = "Удалена"; break;
-            case 64: $result = "Не приянята"; break;
-            case 128: $result = "Отправлена"; break;
-            default: $result = "Не известно ($state)";
-        };    
-    };
-    return $result;
-};
-
-function glog_export($anketas, $format="php", $fields="", $params="") { //  Возвращает данные анкет в виде таблицы
-// format = php | php-serial | json | tsv
-    global $ERROR;
-    
-    $log = array();
-    
-
-    if (!$anketas || empty($anketas)) {
-        $ERROR[] = __FUNCTION__.": пустой список анкет.";
-        return ($format == "php" ? array() : "");
-    };
-    
-    if (empty($fields)){
-        $fields = array(
-            "id" => "id",
-            "Дата" => "date",
-            "Ф.И.О." => "full_name",
-            "Телефон" => "full_phone",
-            "Регион" => "region",
-            "Пол" => "sex",
-            "Возраст" => "age",
-            "Статус" => "state"
-        );
-    };
-    
-    if (!empty($params["state"])){
-        $state = $params["state"];
-    }else{
-        $state = "all";
-    };
-                
-    if ( ($state==32) || ($state==2) ) { // для отчета по удаленным анкетам
-        if (isset($fields["Статус"])){
-            $fields["Причина удаления"] = "comment";
-        }else{
-            die("ERROR: ".__FUNCTION__.": Mandatory item in fields array not found.");
-        };
-    };		
-    
-    foreach ($anketas as $anketa) {
-        $srca = @$anketa["src"];
-        $aid = @$srca["aid"];
-        $fid = @$srca["fid"];
-        
-        if ( ! empty($params["aid"]) && ( $params["aid"] !== $aid ) ) continue; // отборр лидов заданного партнера
-
-        $date = substr(@$anketa["date"],0,10);
-        $time = substr(@$anketa["date"],11);
-        $campaign = @trim(stripslashes(@$srca["campaign"])); //if(!$campaign) $campaign = "&nbsp;";
-        $keyword = @trim(stripslashes(@$srca["keyword"])); //if(!$keyword) $keyword = "&nbsp;";
-        $refsite = @trim(stripslashes(@$srca["refsite"])); //if(!$refsite) $refsite = "&nbsp;";
-        $matches = array();
-        if (@preg_match("/([A-Z]{2})$/",@$srca["src"],$matches) == 1){
-            $gorod = $matches[1];
-        } else {
-            $gorod = "";
-        };            
-        $region = trim(@$anketa["formdata"][$anketa["region_field"]]); //if(!$region) $region = "&nbsp;";
-
-        if ( ($state==32) || ($state==2) ){ // для отчета по удаленным анкетам
-            $comment = glog_get_state_comment($anketa);
-            if ($state==2){
-                $comment = substr($comment, strpos($comment, ":")+1); // удаляем имя оператора из комментария.
-            }
-        }
-            
-        $cur_state = glog_get_state_name(glog_get_state($anketa));
-        
-        
-        $id = @$anketa["id"];
-        $sex = @$anketa["formdata"][$anketa["sex_field"]];
-        $age = glog_get_age($anketa);
-        
-        $data = array();
-        foreach($fields as $k=>$v){
-            if( function_exists("export_field") ){
-                $data[$k] = call_user_func("export_field", $anketa, $v);
-            };
-            
-            if (empty($data[$k])){            
-                if (isset($anketa["formdata"][$v])){  							// явно заданное поле формы
-                    $data[$k] = $anketa["formdata"][$v];
-                }elseif(isset($anketa["formdata"][@$anketa[$v . "_field"]])){		// косвенно заданное поле формы
-                    $data[$k] = $anketa["formdata"][$anketa[$v . "_field"]];
-                }elseif(isset($anketa[$v])){ 									// свойство анкеты
-                    $data[$k] = $anketa[$v];
-                
-                }else{
-                    $data[$k] = "н/д";
-                };
-                
-                if(isset($$v)){												// специально вычисленное выше значение
-                    $data[$k] = $$v;
-                };
-            };
-        };
-        
-        
-         
-        // Перекодирование
-        if(GLOG_WORK_ENCODING != GLOG_FILE_ENCODING){
-            foreach($data as $k=>$v) if ($k!="Статус") $data[$k] = iconv(GLOG_FILE_ENCODING, GLOG_WORK_ENCODING, $v);
-        };
-        // ---------------
-        
-        switch ($format){
-            case "php":
-            case "php-serial":
-            case "json":
-            case "html":
-                $log[] = $data;
-                break;
-            case "tsv":
-                if (empty($log)){
-                    $header = implode("\t",array_keys($data));
-                    if(GLOG_WORK_ENCODING != GLOG_FILE_ENCODING){
-                        $header = iconv(GLOG_FILE_ENCODING, GLOG_WORK_ENCODING, $header);
-                    };
-                    $log[] = $header; // вставляем шапку таблицы первой строкой
-                };
-                $log[] = implode("\t",array_values($data));
-                break;
-        };
-
-    };
-    
-    switch ($format){
-        case "php":
-            // do nothing
-            break;
-        case "php-serial":
-            $log = serialize($log);
-            break;
-        case "json":
-            $log = json_encode($log);
-            break;
-        case "tsv":
-            $log = implode("\n",$log);
-            break;
-        case "html":
-            if ( ! empty($log) ){
-                $HTML = "<table class='leads'>
-                            <thead><tr><th>#</th><th>" . implode("</th><th>", array_keys($log[0])) . "</th></tr></thead>";
-                foreach($log as $k=>$v){
-                    $HTML .= "<tr><td>".($k+1)."</td><td>" . implode("</td><td>", array_values($v)) . "</td></tr>";
-                };
-                $HTML .= "</table>";
-            }else{
-                $HTML = "<div class='alert alert-info'>Нет заявок за выбранный период.</div>";
-            }
-            $log = array("count"=>count($log), "HTML"=>$HTML);
-            break;
-    };
-
-    return $log;
-    
-};
-// ----------------
-function glog_get_age($anketa, $add_units = false) { 				// Возвращает текущий возраст в формате строки "n" ($add_units = false) или "n лет" ($add_units = true). Принимает анкету.
-    
-    $age = "";
-    
-    if (!empty($anketa["age_field"]) && !empty($anketa["formdata"][$anketa["age_field"]])){
-        $age = $anketa["formdata"][$anketa["age_field"]];    
-    }else{
-        if(!empty($anketa["birthdate_field"])){
-            $birthdate = @$anketa["formdata"][$anketa["birthdate_field"]];
-            $byear = @substr($birthdate,0,4);
-            $bmonth = @substr($birthdate,5,2);
-            $bday = @substr($birthdate,8,2);
-        }else{
-            $byear = @$anketa["formdata"][$anketa["birth_year_field"]];
-            $bmonth = @$anketa["formdata"][$anketa["birth_month_field"]];
-            $bday = @$anketa["formdata"][$anketa["birth_day_field"]];
-        };
-
-        if ($byear || $bmonth || $bday){
-            $age = (date('Y')-$byear);
-            if ((int)$bmonth > (int)date('m')){
-                $age--;
-            } elseif (((int)$bmonth == (int)date('m')) && ((int) $bday > (int) date('d'))) {
-                $age--;
-            };
-        };
-    };
-    
-    if ($add_units){
-        switch (substr($age,-1,1)) {
-            case 1:
-                $suf = "год";
-                break;
-            case 2:
-            case 3:
-            case 4:
-                $suf = "года";
-                break;
-            case 5:
-            case 6:
-            case 7:
-            case 8:
-            case 9:
-            default:
-                $suf = "лет";
-        };
-        $age = $age." ".$suf;
-    };
-    return $age;
-};
-function glog_codify($str){                                         // Возвращает строку в виде, пригодном для использования в именах файлов, url, css-классах, ... .
-	$result = glog_translit($str);
-    
-	$result = str_replace(array("+","&"," ",",",":",";",".",",","/","\\","(",")","'","\""),array("_plus_","_and_","-","-","-","-"),$result); 
-    
-	$result = strtolower($result);
-    
-	$result = urlencode($result);
-	
-	return $result;
-};
-function glog_translit($s) {                                        //Возвращает транслитирированную строку.
-    $result = $s;
-
-    $result = str_replace(array("а","б","в","г","д","е","ё","з","и","й","к","л","м","н","о","п","р","с","т","у","ф","х","ы","э"), array("a","b","v","g","d","e","e","z","i","j","k","l","m","n","o","p","r","s","t","u","f","h","y","e"), $result);
-    $result = str_replace(array("А","Б","В","Г","Д","Е","Ё","З","И","Й","К","Л","М","Н","О","П","Р","С","Т","У","Ф","Х","Ы","Э"), array("A","B","V","G","D","E","E","Z","I","J","K","L","M","N","O","P","R","S","T","U","F","H","Y","E"), $result);
-	
-	$result = str_replace(array("ж","ц","ч","ш","щ","ю","я","ъ","ь"), array("zh","ts","ch","sh","sch","yu","ya"),$result);
-	$result = str_replace(array("Ж","Ц","Ч","Ш","Щ","Ю","Я","Ъ","Ь"), array("ZH","TS","CH","SH","SCH","YU","YA"),$result);
-
-	return $result;
-};
-function glog_show_phone($phone_cleared){ 						    // Форматирует номер телефона (только цифры) к  виду (123) 456-78-90
-	return "(" . substr($phone_cleared, 0, 3) . ") " . substr($phone_cleared, 3, 3) . "-" . substr($phone_cleared, 6, 2) . "-" . substr($phone_cleared, 8, 3);
-}
-function glog_clear_phone($phone){                              	// возвращает телефон в формате 9031234567 - только цифры
-	$phone_cleared = "";
-	for($i=0,$l=strlen($phone); $i<$l; $i++){
-		if ( ($phone{$i} >= '0') && ($phone{$i} <= '9') ){
-			$phone_cleared .= $phone{$i};
-		};
-	};
-	return $phone_cleared;
-}
-
-
-// ----------------
-if (!function_exists("dump")){
-    function dump($var, $title="") {						// Печатает дамп переменной, окруженной тегами PRE
-        if ($title) echo "$title : \n";
-        echo "<pre>";
-        var_dump($var);
-        echo "</pre>"; 
-    };
-};
-// ----------------
-
-?>
