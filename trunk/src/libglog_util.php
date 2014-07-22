@@ -1,10 +1,10 @@
 <?php
 
-function glog_dosyslog($message) {								// Пишет сообщение в системный лог при включенной опции GLOG_DO_SYSLOG.
+function glog_dosyslog($message) {								// РџРёС€РµС‚ СЃРѕРѕР±С‰РµРЅРёРµ РІ СЃРёСЃС‚РµРјРЅС‹Р№ Р»РѕРі РїСЂРё РІРєР»СЋС‡РµРЅРЅРѕР№ РѕРїС†РёРё GLOG_DO_SYSLOG.
 
     if (GLOG_DO_SYSLOG) {
         if (!is_dir(dirname(GLOG_SYSLOG))) mkdir(dirname(GLOG_SYSLOG), 0777, true);
-        // Блокируем файл
+        // Р‘Р»РѕРєРёСЂСѓРµРј С„Р°Р№Р»
         $syslog = GLOG_SYSLOG;
         
         $data = array(
@@ -16,9 +16,9 @@ function glog_dosyslog($message) {								// Пишет сообщение в системный лог при
         $message = implode("\t", $data) . "\n";
     
         if (file_put_contents($syslog, $message, FILE_APPEND) === false) {
-            $Subject = "Ошибка: ".$_SERVER['HTTP_HOST'].$_SERVER['SCRIPT_NAME'];
+            $Subject = "РћС€РёР±РєР°: ".$_SERVER['HTTP_HOST'].$_SERVER['SCRIPT_NAME'];
             $extraheader = "Content-type: text/plain; charset=UTF-8";
-            $message= "Невозможно записать данные в системный лог '".$syslog."'!\nНе записанные  данные:\n".$message."\n";
+            $message= "РќРµРІРѕР·РјРѕР¶РЅРѕ Р·Р°РїРёСЃР°С‚СЊ РґР°РЅРЅС‹Рµ РІ СЃРёСЃС‚РµРјРЅС‹Р№ Р»РѕРі '".$syslog."'!\nРќРµ Р·Р°РїРёСЃР°РЅРЅС‹Рµ  РґР°РЅРЅС‹Рµ:\n".$message."\n";
             if ($_SERVER["HTTP_HOST"] == "localhost"){
                 die("<h2>".__FUNCTION__.": ".$subject."</h2><p>".$message."</p>");
             }else{
@@ -31,9 +31,9 @@ function glog_dosyslog($message) {								// Пишет сообщение в системный лог при
         return false;
     };
 };
-function glog_rusdate($date, $withTime = false) {				/* Принимает дату в формате "гггг-мм-дд" и возвращает в формате "дд.мм.гггг" */
+function glog_rusdate($date, $withTime = false) {				/* РџСЂРёРЅРёРјР°РµС‚ РґР°С‚Сѓ РІ С„РѕСЂРјР°С‚Рµ "РіРіРіРі-РјРј-РґРґ" Рё РІРѕР·РІСЂР°С‰Р°РµС‚ РІ С„РѕСЂРјР°С‚Рµ "РґРґ.РјРј.РіРіРіРі" */
     
-    if (preg_match("/\d\d\.\d\d\.\d{4}/", $date)) return $date; // дата уже в формате дд.мм.гггг
+    if (preg_match("/\d\d\.\d\d\.\d{4}/", $date)) return $date; // РґР°С‚Р° СѓР¶Рµ РІ С„РѕСЂРјР°С‚Рµ РґРґ.РјРј.РіРіРіРі
     if ($date == "all") return "";
     if ($date == "toModerate") return "";
     $m = (int) substr($date,5,2); $m = str_pad($m, 2, "0", STR_PAD_LEFT);
@@ -54,7 +54,7 @@ function glog_rusdate($date, $withTime = false) {				/* Принимает дату в формате
         }
     }; 
 };
-function glog_get_age($anketa, $add_units = false) { 				// Возвращает текущий возраст в формате строки "n" ($add_units = false) или "n лет" ($add_units = true). Принимает анкету.
+function glog_get_age($anketa, $add_units = false) { 				// Р’РѕР·РІСЂР°С‰Р°РµС‚ С‚РµРєСѓС‰РёР№ РІРѕР·СЂР°СЃС‚ РІ С„РѕСЂРјР°С‚Рµ СЃС‚СЂРѕРєРё "n" ($add_units = false) РёР»Рё "n Р»РµС‚" ($add_units = true). РџСЂРёРЅРёРјР°РµС‚ Р°РЅРєРµС‚Сѓ.
     
     $age = "";
     
@@ -85,12 +85,12 @@ function glog_get_age($anketa, $add_units = false) { 				// Возвращает текущий в
     if ($add_units){
         switch (substr($age,-1,1)) {
             case 1:
-                $suf = "год";
+                $suf = "РіРѕРґ";
                 break;
             case 2:
             case 3:
             case 4:
-                $suf = "года";
+                $suf = "РіРѕРґР°";
                 break;
             case 5:
             case 6:
@@ -98,13 +98,13 @@ function glog_get_age($anketa, $add_units = false) { 				// Возвращает текущий в
             case 8:
             case 9:
             default:
-                $suf = "лет";
+                $suf = "Р»РµС‚";
         };
         $age = $age." ".$suf;
     };
     return $age;
 };
-function glog_codify($str){                                         // Возвращает строку в виде, пригодном для использования в именах файлов, url, css-классах, ... .
+function glog_codify($str){                                         // Р’РѕР·РІСЂР°С‰Р°РµС‚ СЃС‚СЂРѕРєСѓ РІ РІРёРґРµ, РїСЂРёРіРѕРґРЅРѕРј РґР»СЏ РёСЃРїРѕР»СЊР·РѕРІР°РЅРёСЏ РІ РёРјРµРЅР°С… С„Р°Р№Р»РѕРІ, url, css-РєР»Р°СЃСЃР°С…, ... .
 	$result = glog_translit($str);
     
 	$result = str_replace(array("+","&"," ",",",":",";",".",",","/","\\","(",")","'","\""),array("_plus_","_and_","-","-","-","-"),$result); 
@@ -115,21 +115,21 @@ function glog_codify($str){                                         // Возвращае
 	
 	return $result;
 };
-function glog_translit($s) {                                        //Возвращает транслитирированную строку.
+function glog_translit($s) {                                        //Р’РѕР·РІСЂР°С‰Р°РµС‚ С‚СЂР°РЅСЃР»РёС‚РёСЂРёСЂРѕРІР°РЅРЅСѓСЋ СЃС‚СЂРѕРєСѓ.
     $result = $s;
 
-    $result = str_replace(array("а","б","в","г","д","е","ё","з","и","й","к","л","м","н","о","п","р","с","т","у","ф","х","ы","э"), array("a","b","v","g","d","e","e","z","i","j","k","l","m","n","o","p","r","s","t","u","f","h","y","e"), $result);
-    $result = str_replace(array("А","Б","В","Г","Д","Е","Ё","З","И","Й","К","Л","М","Н","О","П","Р","С","Т","У","Ф","Х","Ы","Э"), array("A","B","V","G","D","E","E","Z","I","J","K","L","M","N","O","P","R","S","T","U","F","H","Y","E"), $result);
+    $result = str_replace(array("Р°","Р±","РІ","Рі","Рґ","Рµ","С‘","Р·","Рё","Р№","Рє","Р»","Рј","РЅ","Рѕ","Рї","СЂ","СЃ","С‚","Сѓ","С„","С…","С‹","СЌ"), array("a","b","v","g","d","e","e","z","i","j","k","l","m","n","o","p","r","s","t","u","f","h","y","e"), $result);
+    $result = str_replace(array("Рђ","Р‘","Р’","Р“","Р”","Р•","РЃ","Р—","Р","Р™","Рљ","Р›","Рњ","Рќ","Рћ","Рџ","Р ","РЎ","Рў","РЈ","Р¤","РҐ","Р«","Р­"), array("A","B","V","G","D","E","E","Z","I","J","K","L","M","N","O","P","R","S","T","U","F","H","Y","E"), $result);
 	
-	$result = str_replace(array("ж","ц","ч","ш","щ","ю","я","ъ","ь"), array("zh","ts","ch","sh","sch","yu","ya"),$result);
-	$result = str_replace(array("Ж","Ц","Ч","Ш","Щ","Ю","Я","Ъ","Ь"), array("ZH","TS","CH","SH","SCH","YU","YA"),$result);
+	$result = str_replace(array("Р¶","С†","С‡","С€","С‰","СЋ","СЏ","СЉ","СЊ"), array("zh","ts","ch","sh","sch","yu","ya"),$result);
+	$result = str_replace(array("Р–","Р¦","Р§","РЁ","Р©","Р®","РЇ","РЄ","Р¬"), array("ZH","TS","CH","SH","SCH","YU","YA"),$result);
 
 	return $result;
 };
-function glog_show_phone($phone_cleared){ 						    // Форматирует номер телефона (только цифры) к  виду (123) 456-78-90
+function glog_show_phone($phone_cleared){ 						    // Р¤РѕСЂРјР°С‚РёСЂСѓРµС‚ РЅРѕРјРµСЂ С‚РµР»РµС„РѕРЅР° (С‚РѕР»СЊРєРѕ С†РёС„СЂС‹) Рє  РІРёРґСѓ (123) 456-78-90
 	return "(" . substr($phone_cleared, 0, 3) . ") " . substr($phone_cleared, 3, 3) . "-" . substr($phone_cleared, 6, 2) . "-" . substr($phone_cleared, 8, 3);
 }
-function glog_clear_phone($phone){                              	// возвращает телефон в формате 9031234567 - только цифры
+function glog_clear_phone($phone){                              	// РІРѕР·РІСЂР°С‰Р°РµС‚ С‚РµР»РµС„РѕРЅ РІ С„РѕСЂРјР°С‚Рµ 9031234567 - С‚РѕР»СЊРєРѕ С†РёС„СЂС‹
 	$phone_cleared = "";
 	for($i=0,$l=strlen($phone); $i<$l; $i++){
 		if ( ($phone{$i} >= '0') && ($phone{$i} <= '9') ){
@@ -139,10 +139,56 @@ function glog_clear_phone($phone){                              	// возвращает т
 	return $phone_cleared;
 }
 
+function glog_http_post($url, $data, $user_agent = ""){             // Р’С‹РїРѕР»РЅСЏРµС‚ POST Р·Р°РїСЂРѕСЃ РЅР° $url СЃ РїР°СЂР°РјРµС‚СЂР°РјРё $data
+
+    $max_tries = 5;
+    $sleep_coef = .5;
+    $max_response_length_for_log = 50;
+    
+    $result = "";
+    $request_id = uniqid();
+    $postdata = http_build_query($data);
+
+	$opts = array('http' =>
+		array(
+			'method'  => 'POST',
+			'header'  => 'Content-type: application/x-www-form-urlencoded',
+			'content' => $postdata,
+		)
+	);
+    if ( ! empty($user_agent) ) $opts["http"]['user_agent'] = $user_agent;
+
+	$context = stream_context_create($opts);
+    $tries = $max_tries;
+    while ( ! ( $response = file_get_contents($url , false, $context) ) && ($tries--) ){
+        if ( ! $response ) sleep( $sleep_coef * ($max_tries-$tries));
+    };            
+    glog_dosyslog(__FUNCTION__.": NOTICE: РћС‚РїСЂР°РІР»РµРЅ Р·Р°РїСЂРѕСЃ " . $request_id . " РЅР° '" . $url . "' ... " . ($response === false ? "ERROR" : "OK"));
+    glog_dosyslog(__FUNCTION__.": NOTICE: " . $request_id . " POST-РґР°РЅРЅС‹Рµ: '".$postdata."'.");
+
+    if ($response){
+        $result = ltrim($response, "\xEF\xBB\xBF"); // РёР·Р±Р°РІР»СЏРµРјСЃСЏ РѕС‚ BOM, РµСЃР»Рё РєРѕРґРёСЂРѕРІРєР° РѕС‚РІРµС‚Р° UTF-8
+        if ($result){
+            if ($tries<$max_tries){
+                if ( strlen($result) <= $max_response_length_for_log ){
+                    glog_dosyslog(__FUNCTION__.": NOTICE: РџРѕР»СѓС‡РµРЅ РѕС‚РІРµС‚ РЅР° " . $request_id . ": '" . $result . "'. РЎРґРµР»Р°РЅРѕ РїРѕРїС‹С‚РѕРє Р·Р°РїСЂРѕСЃР°: ".($max_tries-$tries));    
+                }else{
+                    glog_dosyslog(__FUNCTION__.": NOTICE: РџРѕР»СѓС‡РµРЅ РѕС‚РІРµС‚ РЅР° " . $request_id . ". РЎРґРµР»Р°РЅРѕ РїРѕРїС‹С‚РѕРє Р·Р°РїСЂРѕСЃР°: ".($max_tries-$tries));
+                }
+            }
+        }else{
+            dosyslog(__FUNCTION__.": WARNING: РџСѓСЃС‚РѕР№ РѕС‚РІРµС‚ РЅР° " . $request_id . ": '" . $response . "'.");
+        }
+    }else{
+        dosyslog(__FUNCTION__.": ERROR: РќРµ СѓРґР°Р»РѕСЃСЊ РїРѕР»СѓС‡РёС‚СЊ РѕС‚РІРµС‚ РЅР° " . $request_id . " РїРѕСЃР»Рµ " . $max_tries .  " РїРѕРїС‹С‚РѕРє.");
+    }
+
+    return $result;
+}
 
 // ----------------
 if (!function_exists("dump")){
-    function dump($var, $title="") {						// Печатает дамп переменной, окруженной тегами PRE
+    function dump($var, $title="") {						// РџРµС‡Р°С‚Р°РµС‚ РґР°РјРї РїРµСЂРµРјРµРЅРЅРѕР№, РѕРєСЂСѓР¶РµРЅРЅРѕР№ С‚РµРіР°РјРё PRE
         if ($title) echo "$title : \n";
         echo "<pre>";
         var_dump($var);
