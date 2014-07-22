@@ -5,7 +5,7 @@ define("LIBGLOG_REVISION", '$Rev$');
 
 error_reporting(E_ALL);
 
-require_once dirname(__FILE__) . "libglog_util.php";
+require_once dirname(__FILE__) . "/libglog_util.php";
 
 if(!defined("GLOG_DO_SYSLOG")) define ("GLOG_DO_SYSLOG", true);
 if(!defined("GLOG_SYSLOG")) define ("GLOG_SYSLOG","glog_syslog_".date("Y-m-d").".log.txt");
