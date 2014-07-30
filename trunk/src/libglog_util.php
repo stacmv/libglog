@@ -139,7 +139,17 @@ function glog_clear_phone($phone){                              	// возвра
 	return $phone_cleared;
 }
 
-function glog_http_post($url, $data, $user_agent = ""){             // Выполняет POST запрос на $url с параметрами $data
+function glog_http_get($url, $use_cache = true, $user_agent = ""){
+    return glog_http_request("GET", $url, array(), $use_cache, "", $user_agent);
+};
+function glog_http_post($url, $data, $use_cache = true, $content_type="", $user_agent = ""){
+    return glog_http_request("POST", $url, $data, $use_cache, $content_type, $user_agent);
+};
+function glog_http_request($method, $url, $data, $use_cache = true, $content_type = "", $user_agent = ""){ // Выполняет HTTP запрос методом $method на $url с параметрами $data
+
+    $cache_ttl = 60*60; // 1 час
+    $cache_dir = DATA_DIR . ".cache/" . __FUNCTION__ . "/";
+    if ( ! is_dir($cache_dir) ) mkdir($cache_dir, 0777, true);
 
     $max_tries = 5;
     $sleep_coef = .5;
@@ -147,24 +157,44 @@ function glog_http_post($url, $data, $user_agent = ""){             // Выпо�
     
     $result = "";
     $request_id = uniqid();
-    $postdata = http_build_query($data);
+    
+    $method = strtoupper($method);
+    if ( ! $content_type && ( $method == "POST") ) $content_type = 'Content-type: application/x-www-form-urlencoded';
+    
+    if ($method == "POST") $postdata = http_build_query($data);
+    
+	$opts = array('http' => array( 'method'  => $method ) );
+    if ( ! empty($content_type) ) $opts["http"]['header']     = $content_type;
+    if ( ! empty($user_agent) )   $opts["http"]['user_agent'] = $user_agent;
+    if ( ! empty($postdata) )     $opts["http"]['content']    = $postdata;
 
-	$opts = array('http' =>
-		array(
-			'method'  => 'POST',
-			'header'  => 'Content-type: application/x-www-form-urlencoded',
-			'content' => $postdata,
-		)
-	);
-    if ( ! empty($user_agent) ) $opts["http"]['user_agent'] = $user_agent;
-
-	$context = stream_context_create($opts);
+    
+    glog_dosyslog(__FUNCTION__.": NOTICE: " . $method . "-запрос " . $request_id . " на '" . $url . "'" . ( ! empty($postdata) ? " с данными '" . urldecode($postdata) . "'" : "" ) . " ... ");
+    
     $tries = $max_tries;
-    while ( ! ( $response = file_get_contents($url , false, $context) ) && ($tries--) ){
-        if ( ! $response ) sleep( $sleep_coef * ($max_tries-$tries));
-    };            
-    glog_dosyslog(__FUNCTION__.": NOTICE: Отправлен запрос " . $request_id . " на '" . $url . "' ... " . ($response === false ? "ERROR" : "OK"));
-    glog_dosyslog(__FUNCTION__.": NOTICE: " . $request_id . " POST-данные: '".$postdata."'.");
+    
+    $hash = md5( serialize( func_get_args() ) );
+    $cache_file = $cache_dir . $hash . ".php";
+    if ( $use_cache ){        
+        if ( file_exists($cache_file) && ( time() - filemtime($cache_file) < $cache_ttl ) ){            
+            $response = file_get_contents($cache_file);
+            glog_dosyslog(__FUNCTION__ . ": NOTICE: Ответ на запрос '" . $request_id . "' взят из кэша '".basename($cache_file). "'.");
+        };
+    };
+    
+    
+    if ( empty($response) ){    
+        $context = stream_context_create($opts);
+        
+        while ( ! ( $response = file_get_contents($url , false, $context) ) && ($tries--) ){
+            if ( ! $response ) sleep( $sleep_coef * ($max_tries-$tries));
+        };            
+        glog_dosyslog(__FUNCTION__.": NOTICE: Отправлен " . $method . "-запрос " . $request_id . " на '" . $url . "' ... " . ($response === false ? "ERROR" : "OK"));
+        if ( ! empty($postdata) ) glog_dosyslog(__FUNCTION__.": NOTICE: " . $request_id . " POST-данные: '".$postdata."'.");
+        
+    };
+    
+    
 
     if ($response){
         $result = ltrim($response, "\xEF\xBB\xBF"); // избавляемся от BOM, если кодировка ответа UTF-8
@@ -176,6 +206,13 @@ function glog_http_post($url, $data, $user_agent = ""){             // Выпо�
                     glog_dosyslog(__FUNCTION__.": NOTICE: Получен ответ на " . $request_id . ". Сделано попыток запроса: ".($max_tries-$tries));
                 }
             }
+            
+            if ( $use_cache ){
+                if ( ! file_put_contents($cache_file, $result) ){
+                    glog_dosyslog(__FUNCTION__ . ": ERROR: Ошибка записи в кэш-файл '" . $cache_file . "'.");
+                };
+            };
+            
         }else{
             dosyslog(__FUNCTION__.": WARNING: Пустой ответ на " . $request_id . ": '" . $response . "'.");
         }
