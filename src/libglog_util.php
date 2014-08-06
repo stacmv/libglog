@@ -82,28 +82,33 @@ function glog_get_age($anketa, $add_units = false) { 				// Возвращает
         };
     };
     
-    if ($add_units){
-        switch (substr($age,-1,1)) {
-            case 1:
-                $suf = "год";
-                break;
-            case 2:
-            case 3:
-            case 4:
-                $suf = "года";
-                break;
-            case 5:
-            case 6:
-            case 7:
-            case 8:
-            case 9:
-            default:
-                $suf = "лет";
-        };
-        $age = $age." ".$suf;
-    };
+    if ( $add_units ) $age = glog_get_age_str($age);    
+    
     return $age;
 };
+function glog_get_age_str($age){    // возвращает строку вида "n лет"
+    
+    switch (substr($age,-1,1)) {
+        case 1:
+            $suf = "год";
+            break;
+        case 2:
+        case 3:
+        case 4:
+            $suf = "года";
+            break;
+        case 5:
+        case 6:
+        case 7:
+        case 8:
+        case 9:
+        default:
+            $suf = "лет";
+    };
+    $age = $age." ".$suf;
+    
+    return $age;
+}
 function glog_codify($str){                                         // Возвращает строку в виде, пригодном для использования в именах файлов, url, css-классах, ... .
 	$result = glog_translit($str);
     
