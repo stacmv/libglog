@@ -182,7 +182,7 @@ function glog_http_request($method, $url, $data, $use_cache = true, $content_typ
     $cache_file = $cache_dir . $hash . ".php";
     if ( $use_cache ){        
         if ( file_exists($cache_file) && ( time() - filemtime($cache_file) < $cache_ttl ) ){            
-            $response = file_get_contents($cache_file);
+            $response = @file_get_contents($cache_file);
             glog_dosyslog(__FUNCTION__ . ": NOTICE: Ответ на запрос '" . $request_id . "' взят из кэша '".basename($cache_file). "'.");
         };
     };
@@ -191,7 +191,7 @@ function glog_http_request($method, $url, $data, $use_cache = true, $content_typ
     if ( empty($response) ){    
         $context = stream_context_create($opts);
         
-        while ( ! ( $response = file_get_contents($url , false, $context) ) && ($tries--) ){
+        while ( ! ( $response = @file_get_contents($url , false, $context) ) && ($tries--) ){
             if ( ! $response ) sleep( $sleep_coef * ($max_tries-$tries));
         };            
         glog_dosyslog(__FUNCTION__.": NOTICE: Отправлен " . $method . "-запрос " . $request_id . " на '" . $url . "' ... " . ($response === false ? "ERROR" : "OK"));
