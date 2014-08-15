@@ -663,8 +663,8 @@ function glog_render($template_file, $data){
     
     return $HTML;	
 };
-function glog_send($record, $mode){
-    global $CFG; // настройки отправки анкет задаются в settings.php
+function glog_send($record, $mode, $options = array() ){
+    global $CFG; // настройки отправки анкет задаются в APP_DIR/settings.ini
     
     $success_str = "Сайт: автоматическая отправка не произведена.";
     $state = 0;
@@ -672,23 +672,29 @@ function glog_send($record, $mode){
     if (empty($mode)){
         glog_dosyslog(__FUNCTION__.": ERROR: Не задан обязательный параметр - режим отправки анкеты.");
     }else{
+           
        
-        $mode = strtok($mode, " ");
-        while ($mode){
-       
-            switch($mode){
-                case "email":
-                    if (empty($CFG["SEND"][$mode."_to"])){
-                        glog_dosyslog(__FUNCTION__.": ERROR: Не задан e-mail для отправки анкет в настройках.");
-                        $success_str = "Сайт: автоматическая отправка не удалась из-за некорректных настроек адресатов.";
-                        $state = 0;
+        switch($mode){
+            case "email":
+                if (empty($CFG["SEND"][$mode."_to"])){
+                    glog_dosyslog(__FUNCTION__.": ERROR: Не задан e-mail для отправки анкет в настройках.");
+                    $success_str = "Сайт: автоматическая отправка не удалась из-за некорректных настроек адресатов.";
+                    $state = 0;
+                }else{
+                
+                    // Проверка темы письма
+                    if (empty($CFG["SEND"][$mode."_subject"])){                
+                        glog_dosyslog(__FUNCTION__.": ERROR: Не задана тема письма для отправки анкет в настройках.");
+                    };
+                    
+                    
+                    // Проверка шаблона письма или текста письма
+                    if ( ! empty($options["message"]) ){
+                        
+                        $message = $options["message"];
+                    
                     }else{
                     
-                        // Ругаемся на плохие настройки
-                        if (empty($CFG["SEND"][$mode."_subject"])){                
-                            glog_dosyslog(__FUNCTION__.": ERROR: Не задана тема письма для отправки анкет в настройках.");
-                        };
-                        
                         if (empty($CFG["SEND"][$mode."_template"])){
                             glog_dosyslog(__FUNCTION__.": ERROR: Не задан шаблон письма для отправки анкет в настройках.");
                             $success_str = "Сайт: автоматическая отправка не удалась из-за некорректных настроек шаблона.";
@@ -699,106 +705,82 @@ function glog_send($record, $mode){
                             $state = 0;
                         }else{
                             
-                            // Пытаемся отправить письма
-                            
                             $template_filename = GLOG_TEMPLATES_DIR.$CFG["SEND"][$mode."_template"].".htm";
-                            
+                        
                             $data = glog_prepare_data($record);
-                            if ( function_exists("show_prepare_data") ) $data = array_merge( $data, show_prepare_data($record, $mode) );
-                            
+                            if ( function_exists("prepare") ) $data = array_merge( $data, prepare($record, $mode) );
+                        
                             $message = glog_render($template_filename, $data );
-                            
-                            
-                            // $template = file_get_contents(GLOG_TEMPLATES_DIR.$CFG["SEND"][$mode."_template"].".htm");
-                            
-                            // if (empty($template)) glog_dosyslog(__FUNCTION__.": ERROR: Шаблон письма пуст - ".GLOG_TEMPLATES_DIR.$CFG["SEND"][$mode."_template"].".htm");
-                            
-                            
-                            // parse template.
-        
-                            // $template = str_replace("\r\n", "\n", $template);
-                            // $template = str_replace("\r", "\n", $template);
-                            
-                            // Подстановка данных формы
-                            // foreach($record["formdata"] as $k=>$v){
-                                // if ($k==$record["full_phone_field"]) $v = "+7 (".substr($v,0,3).") ".substr($v,3,3)."-".substr($v,6,2)."-".substr($v,8,2);
-                                // $template = str_replace("%%form_".$k."%%", $v, $template);
-                            // };
-                            
-                            // Подстановка данных источника
-                            // foreach($record["src"] as $k=>$v){
-                                // $template = str_replace("%%src_".$k."%%", $v, $template);
-                            // };
-                            
-                            // Подстановка данных анкеты
-                            // $template = str_replace("%%id%%", $record["id"], $template);
-                            // $template = str_replace("%%date%%", $record["date"], $template);    
-                            // $template = str_replace("%%IP%%", $record["IP"], $template);
-                            // $template = str_replace("%%host%%", $record["host"], $template);    
-                            
-                            // $template = preg_replace("/%%[^%]+%%/","",$template); // удаляем все placeholders для которых нет данных во входных параметрах.
-                            
-                            
-                            $to = explode(",",$CFG["SEND"][$mode."_to"]); foreach($to as $k=>$v) $to[$k] = trim($v);
-                            $from = @$CFG["SEND"][$mode."_from"] or $from = EMAIL;
-                            $subject = @$CFG["SEND"][$mode."_subject"] or  $subject = GLOG_SEND_EMAIL_SUBJECT_DEFAULT;
-                            // $subject = "=?UTF-8?B?".base64_encode($subject)."?=";
-                            $headers = "MIME-Version: 1.0\r\n"; 
-                            $headers .= "content-type: text/html; charset=UTF-8\r\nFROM: ".$from."\r\nREPLY-TO: ".$from;
-                            
-                            // $message = $template;
-
-                            
-                            $success_email = array(); // список email'ов, на которые успешно отправлена анкета.
-                            foreach($to as $email_to){
-                                if (mail($email_to, $subject, $message, $headers)){
-                                    glog_dosyslog(__FUNCTION__.": OK: Анкета id:".@$record["id"]." от ".substr($record["date"],0,10)." отправлена на '".$email_to."'.");
-                                    $success_email[] = $email_to;
-                                }else{
-                                    glog_dosyslog(__FUNCTION__.": ERROR: Не удалось отправить анкету id:".@$record["id"]." от ".substr($record["date"],0,10)." на '".$email_to."'.");
-                                }
-                                if (count($to) > 2) sleep(.5); // если адресатов больше 2, ждем по .5 секунды между отправками писем.
-                            };
-                            
-                            if (!empty($success_email)){
-                                $success_str = "Сайт: Анкета отправлена по e-mail на ".(count($success_email) == count($to) ? "адреса" : count($success_email) . " из " . count($to) . " адресов") . ": " . implode(", ", $success_email);
-                                $state = 128;
-                            }else{
-                                $success_str = "Сайт: Анкета не отправлена по e-mail";
-                                $state = 0;
-                            };
                         };
                     };
                     
-                    // Специальная отметка об отправке анкеты, чтобы не парсить историю.
+                    
+                    // Формирование заголовков                        
+                    $to = explode(",",$CFG["SEND"][$mode."_to"]); foreach($to as $k=>$v) $to[$k] = trim($v);
+                    $from = @$CFG["SEND"][$mode."_from"] or $from = EMAIL;
+                    $subject = @$CFG["SEND"][$mode."_subject"] or  $subject = GLOG_SEND_EMAIL_SUBJECT_DEFAULT;
+                    // $subject = "=?UTF-8?B?".base64_encode($subject)."?=";
+                    
+                    
+                    // Дополнительные заголовки
+                    if ( ! empty($options["headers"]) ){
+                        $headers = $options["headers"];
+                    }else{
+                        $headers = "MIME-Version: 1.0\r\n"; 
+                        $headers .= "content-type: text/html; charset=UTF-8\r\nFROM: ".$from."\r\nREPLY-TO: ".$from;
+                        
+                    };
+                      
+
+                    // Отправка писем                        
+                    $success_email = array(); // список email'ов, на которые успешно отправлена анкета.
+                    foreach($to as $email_to){
+                        if (mail($email_to, $subject, $message, $headers)){
+                            glog_dosyslog(__FUNCTION__.": OK: Анкета id:".@$record["id"]." от ".substr($record["date"],0,10)." отправлена на '".$email_to."'.");
+                            $success_email[] = $email_to;
+                        }else{
+                            glog_dosyslog(__FUNCTION__.": ERROR: Не удалось отправить анкету id:".@$record["id"]." от ".substr($record["date"],0,10)." на '".$email_to."'.");
+                        }
+                        if (count($to) > 2) sleep(.5); // если адресатов больше 2, ждем по .5 секунды между отправками писем.
+                    };
+                    
+                    if (!empty($success_email)){
+                        $success_str = "Сайт: Анкета отправлена по e-mail на ".(count($success_email) == count($to) ? "адреса" : count($success_email) . " из " . count($to) . " адресов") . ": " . implode(", ", $success_email);
+                        $state = 128;
+                    }else{
+                        $success_str = "Сайт: Анкета не отправлена по e-mail";
+                        $state = 0;
+                    };
+
+                };
+                
+                // Специальная отметка об отправке анкеты, чтобы не парсить историю.
                 if (empty($record["sent"])) $record["sent"] = array();
                 if (empty($record["sent"][$mode])) $record["sent"][$mode] = "";
                 if ($state == 128) $record["sent"][$mode] = time();
-                
-                
-                    $record = glog_mark_record($record, $record["host"], $state, $success_str.".IP:".@$_SERVER["SERVER_ADDR"]);
-                                            
-                    break;
-                case "fake":
-                    $state = 128;
-                    $success_str = "Заявка помечена как отправленная";
-                    if (empty($record["sent"])) $record["sent"] = array();
-                    if (empty($record["sent"][$mode])) $record["sent"][$mode] = "";
-                    if ($state == 128) $record["sent"][$mode] = time();
-                
-                    $record = glog_mark_record($record, $record["host"], $state, $success_str.".IP:".@$_SERVER["SERVER_ADDR"]);
-                    break;
-                default:
-                    if (function_exists("send_".$mode)){
-                        $record = call_user_func("send_".$mode, $record);
-                    }else{
-                        glog_dosyslog(__FUNCTION__.": ERROR: Не задана функция отправки для режима ".$mode.". Анкета не будет отправлена.");
-                    };                    
-                    break;
-            }; // switch
             
-            $mode = strtok(" ");
-        }; // while
+            
+                $record = glog_mark_record($record, $record["host"], $state, $success_str.".IP:".@$_SERVER["SERVER_ADDR"]);
+                                        
+                break;
+            case "fake":
+                $state = 128;
+                $success_str = "Заявка помечена как отправленная";
+                if (empty($record["sent"])) $record["sent"] = array();
+                if (empty($record["sent"][$mode])) $record["sent"][$mode] = "";
+                if ($state == 128) $record["sent"][$mode] = time();
+            
+                $record = glog_mark_record($record, $record["host"], $state, $success_str.".IP:".@$_SERVER["SERVER_ADDR"]);
+                break;
+            default:
+                if (function_exists("send_".$mode)){
+                    $record = call_user_func("send_".$mode, $record);
+                }else{
+                    glog_dosyslog(__FUNCTION__.": ERROR: Не задана функция отправки для режима ".$mode.". Анкета не будет отправлена.");
+                };                    
+                break;
+        }; // switch
+
     };  
     
     return $record;
