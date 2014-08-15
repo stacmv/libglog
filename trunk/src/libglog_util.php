@@ -144,6 +144,36 @@ function glog_clear_phone($phone){                              	// возвра
 	return $phone_cleared;
 }
 
+function glog_mail_create_miltipart( $text, $attachment_content, $attachment_name="", $from="" ){
+    
+    
+    if ( ! $attachment_name ) $attachment_name = "glog_attachment_" . date("YmdHis");
+    
+    
+    $un        = strtoupper(uniqid(time()));
+    
+    $headers   = "";
+    if (!empty($from)) $headers .= "From: $from\n";
+    $headers  .= "X-Mailer: Glog\n";
+    if (!empty($from)) $headers .= "Reply-To: $from\n";
+    $headers  .= "Mime-Version: 1.0\n";
+    $headers  .= "Content-Type:multipart/mixed;";
+    $headers  .= "boundary=\"----------".$un."\"\n\n";
+    
+    $message   = "------------".$un."\nContent-Type:text/html;\n";
+    $message  .= "Content-Transfer-Encoding: 8bit\n\n$text\n\n";
+    $message  .= "------------".$un."\n";
+    $message  .= "Content-Type: application/octet-stream;";
+    $message  .= "name=\"".basename($attachment_name)."\"\n";
+    $message  .= "Content-Transfer-Encoding:base64\n";
+    $message  .= "Content-Disposition:attachment;";
+    $message  .= "filename=\"".basename($filename)."\"\n\n";
+    $message  .= chunk_split(base64_encode( $attachment_content ))."\n";
+
+    return array("message"=>$message, "headers"=> $headers);
+}
+
+
 function glog_http_get($url, $use_cache = true, $user_agent = ""){
     return glog_http_request("GET", $url, array(), $use_cache, "", $user_agent);
 };
