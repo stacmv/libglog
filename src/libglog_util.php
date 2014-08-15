@@ -144,7 +144,7 @@ function glog_clear_phone($phone){                              	// возвра
 	return $phone_cleared;
 }
 
-function glog_mail_create_miltipart( $text, $attachment_content, $attachment_name="", $from="" ){
+function glog_mail_create_multipart( $text, $attachment_content, $attachment_name="", $from="" ){
     
     
     if ( ! $attachment_name ) $attachment_name = "glog_attachment_" . date("YmdHis");
@@ -160,14 +160,14 @@ function glog_mail_create_miltipart( $text, $attachment_content, $attachment_nam
     $headers  .= "Content-Type:multipart/mixed;";
     $headers  .= "boundary=\"----------".$un."\"\n\n";
     
-    $message   = "------------".$un."\nContent-Type:text/html;\n";
+    $message   = "------------".$un."\nContent-Type:text/html;charset=" . GLOG_FILE_ENCODING . "\n";
     $message  .= "Content-Transfer-Encoding: 8bit\n\n$text\n\n";
     $message  .= "------------".$un."\n";
     $message  .= "Content-Type: application/octet-stream;";
     $message  .= "name=\"".basename($attachment_name)."\"\n";
     $message  .= "Content-Transfer-Encoding:base64\n";
     $message  .= "Content-Disposition:attachment;";
-    $message  .= "filename=\"".basename($filename)."\"\n\n";
+    $message  .= "filename=\"".basename($attachment_name)."\"\n\n";
     $message  .= chunk_split(base64_encode( $attachment_content ))."\n";
 
     return array("message"=>$message, "headers"=> $headers);
