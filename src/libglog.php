@@ -1,6 +1,6 @@
 <?php
 
-define("LIBGLOG_VERSION", "0.6.7");
+define("LIBGLOG_VERSION", "0.6.8");
 define("LIBGLOG_REVISION", '$Rev$');
 
 error_reporting(E_ALL);
@@ -25,6 +25,11 @@ if (!is_dir(DATA_DIR)) die("libglog: code: DATA_DIR");
 
 if(!isset($CFG)) die("libglog: code: CFG"); // конфигурация лэндинга одлжна быть определена в вызывающей программе.
 
+// Constants
+define("GLOG_SORT_ASC", true);
+define("GLOG_SORT_DESC", false);
+
+// Functions
 function glog_export($anketas, $format="php", $fields="", $params="") { //  Возвращает данные анкет в виде таблицы
 // format = php | php-serial | json | tsv
     global $ERROR;
@@ -256,16 +261,12 @@ function glog_filter_op($records,$op, $action) {			// Возвращает сп�
     return $f_records;
 };
 function glog_filter_state($records, $state) {			// Возвращает список анкет со текущим (последним) статусом $state.
-    if (!$records|| !$state) {return array();};
+    if (!$records) return array();
     
     $f_records ="";
-    for ($i=0;$i<count($records);$i++) {
-        $ch = count($records[$i]['history']);
-        if (!isset($records[$i]['history'][$ch-1]['state'])) continue;
-        if ($records[$i]['history'][$ch-1]['state'] == $state) {
-            $f_records[] = $records[$i];			
-        };
-    };
+    foreach($records as $record){
+        if ( $state == glog_get_state($record) ) $f_records[] = $record;        
+    }
     return $f_records;
 };
 function glog_find_id($records, $id){							/* Возвращает (первую найденную) позицию анкеты с $id в списке $records. */
@@ -657,7 +658,7 @@ function glog_render($template_file, $data){
         //glog_dosyslog(__FUNCTION__.": NOTICE: Успешно применен шаблон '".$template_file."'.");
     
     }else{
-		$HTML = "<p><b>Ошибка!</b> Файл шаблона не найден".(DIAGNOSTICS_MODE ? " - '".$template_file."'" : "")."</p>";
+		$HTML = "<p><b>Ошибка!</b> Файл шаблона не найден".(DIAGNOSTICS_MODE || ($_SERVER["HTTP_HOST"] == "localhost") ? " - '".$template_file."'" : "")."</p>";
             glog_dosyslog(__FUNCTION__.": ERROR: Файл шаблона не найден - '".$template_file."'.");
     };
     
