@@ -253,6 +253,7 @@ function glog_http_request($method, $url, $data, $use_cache = true, $content_typ
         }
     }else{
         dosyslog(__FUNCTION__.": ERROR: Не удалось получить ответ на " . $request_id . " после " . $max_tries .  " попыток.");
+        $result = false;
     }
 
     return $result;
