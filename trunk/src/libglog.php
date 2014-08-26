@@ -110,7 +110,7 @@ function glog_cache_count($recordsORcurdate){               // Сохраняе�
     }
     
     // Запись кэша в файл
-    krsort($counts);
+    ksort($counts);
     @$res = file_put_contents($cache_file, serialize($counts));
     
     if ( ! $res ){
@@ -388,7 +388,7 @@ function glog_get_count($curdate, $state="") {	// Возвращает коли�
     static $counts;
     
     
-    // glog_dosyslog(__FUNCTION__.": getcount for $curdate ($state) Start");
+    glog_dosyslog(__FUNCTION__.": getcount for $curdate ($state) Start");
 	$cache_file = GLOG_COUNTS_CACHE;
 	
     $result = array();
@@ -422,8 +422,10 @@ function glog_get_count($curdate, $state="") {	// Возвращает коли�
             $result = array("all"=>false);
         }
     };
+    
+    if ( ( $state == "all") && ( $result === false ) ) glog_cache_count($curdate);
 
-    // glog_dosyslog(__FUNCTION__.": getcount for $curdate ($state) Finish " . json_encode($result) );
+    glog_dosyslog(__FUNCTION__.": getcount for $curdate ($state) Finish " . json_encode($result) );
         
     return $result;
 };

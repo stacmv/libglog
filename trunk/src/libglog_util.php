@@ -149,11 +149,13 @@ function glog_file_read($file_name, $title="" ){
     
     if (file_exists($file_name)){
         $res = @file_get_contents($file_name);
-    
-        if ($res === ""){
-            glog_dosyslog(__FUNCTION__ . ": WARNING: Файл '" . $file_name . "' пустой.");
-        }else{
-            glog_dosyslog(__FUNCTION__ . ": ERROR: Ошибка чтения " . $file_name );
+        
+        if ( ! $res ){
+            if ($res === ""){
+                glog_dosyslog(__FUNCTION__ . ": WARNING: Файл '" . $file_name . "' пустой.");
+            }else{
+                glog_dosyslog(__FUNCTION__ . ": ERROR: Ошибка чтения " . $file_name );
+            };
         };
     }else{
         glog_dosyslog(__FUNCTION__ . ": WARNING: Файл '" . $file_name . "' не существует.");
