@@ -581,6 +581,7 @@ function glog_get_state_name($state) { //возвращает наименова
             case 32: $result = "Удалена"; break;
             case 64: $result = "Не приянята"; break;
             case 128: $result = "Отправлена"; break;
+            case 129: $result = "Недозвон"; break;
             default: $result = "Не известно ($state)";
         };    
     };
