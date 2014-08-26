@@ -144,6 +144,23 @@ function glog_clear_phone($phone){                              	// возвра
 	return $phone_cleared;
 }
 
+function glog_file_read($file_name, $title="" ){
+    $res = "";
+    
+    if (file_exists($file_name)){
+        $res = @file_get_contents($file_name);
+    
+        if ($res === ""){
+            glog_dosyslog(__FUNCTION__ . ": WARNING: Файл '" . $file_name . "' пустой.");
+        }else{
+            glog_dosyslog(__FUNCTION__ . ": ERROR: Ошибка чтения " . $file_name );
+        };
+    }else{
+        glog_dosyslog(__FUNCTION__ . ": WARNING: Файл '" . $file_name . "' не существует.");
+    }
+
+    return $res;
+}
 function glog_mail_create_multipart( $text, $attachment_content, $attachment_name="", $from="" ){
     
     

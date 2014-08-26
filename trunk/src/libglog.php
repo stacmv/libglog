@@ -1,6 +1,6 @@
 <?php
 
-define("LIBGLOG_VERSION", "0.6.8");
+define("LIBGLOG_VERSION", "0.7");
 define("LIBGLOG_REVISION", '$Rev$');
 
 error_reporting(E_ALL);
@@ -29,7 +29,99 @@ if(!isset($CFG)) die("libglog: code: CFG"); // конфигурация лэнд
 define("GLOG_SORT_ASC", true);
 define("GLOG_SORT_DESC", false);
 
+define("GLOG_COUNTS_CACHE", DATA_DIR . 'counts.cache');
+
 // Functions
+function glog_cache_count($recordsORcurdate){               // Сохраняет данные о количестве анкет каждого статуса в кэш-файле
+    global $glog_states_heades; // задается в GLOG или другом клиентском коде - массив, инлексы которого = коды статусов
+    
+    $cache_file = GLOG_COUNTS_CACHE;
+    
+    $records = array();
+    $counts  = array();     // кол-во анкеты во всем индексе
+    $this_counts = array(); // кол-во анкет, расчитанное по входным параметрам
+    
+    // Чтение кэша
+    $tmp = glog_file_read($cache_file);
+    if ($tmp){
+        $counts = @unserialize($tmp);
+        if ( ! is_array($counts) ){
+            glog_dosyslog(__FUNCTION__ . ": ERROR: Ошибка десериализации " . $cache_file );
+            $counts = array();
+        }
+    };
+    
+    // Записи для подсчета
+    if ( is_array($recordsORcurdate) ){
+        $records = $recordsORcurdate;
+    }elseif( is_string($recordsORcurdate) ){
+        $curdate = $recordsORcurdate;
+        $dates = glog_get_dates();
+        if ( in_array($curdate, $dates) ){
+            $records = glog_read($curdate, "all");
+        };
+    }
+    
+    
+    
+    if ( ! empty($records) ){
+        // Очистить кэш за те даты, за которые будет новый расчет
+        $dates = array();
+        foreach($records as $record) $dates[ glog_get_date($record) ] = true;
+        foreach($dates as $date=>$v) $counts[$date] = array();
+                
+        // Подсчет количества по статусам и датам
+        foreach($records as $record){
+            $date  = glog_get_date($record);
+            $state = glog_get_state($record);
+            
+            if ( empty($counts[$date]) ){
+                $counts[$date] = array();
+                $counts[$date]["all"] = 0;
+            };
+            
+            if ( empty($this_counts[$date]) ){
+                $this_counts[$date] = array();
+                $this_counts[$date]["all"] = 0;
+            };
+
+            if ( empty($counts[$date][$state]) ) $counts[$date][$state] = 0;
+            $counts[$date][$state]++;
+            $counts[$date]["all"]++;
+            
+            if ( empty($this_counts[$date][$state]) ) $this_counts[$date][$state] = 0;
+            $this_counts[$date][$state]++;
+            $this_counts[$date]["all"]++;
+            
+        };
+        
+        // Простановка нулей по важным статусам
+        $states = array(0, 1, 2,  4, 32, 128, 129, 132);
+        if ( ! empty($glog_states_heades) ){
+            $states = array_merge( array_keys($glog_states_heades) );
+        };
+        foreach($dates as $date=>$v){
+            foreach($states as $state){
+                if ( ! isset($counts[$date][$state]) ) $counts[$date][$state] = 0;
+                if ( ! isset($this_counts[$date][$state]) ) $this_counts[$date][$state] = 0;
+            }
+        };
+        
+    }
+    
+    // Запись кэша в файл
+    krsort($counts);
+    @$res = file_put_contents($cache_file, serialize($counts));
+    
+    if ( ! $res ){
+        glog_dosyslog(__FUNCTION__ . ": ERROR: Ошибка сохранения кэша '" . $cache_file . "'.");
+    }else{
+        glog_dosyslog(__FUNCTION__ . ": NOTICE: ". json_encode($this_counts));
+    };
+    
+    return $res;
+
+}
 function glog_export($anketas, $format="php", $fields="", $params="") { //  Возвращает данные анкет в виде таблицы
 // format = php | php-serial | json | tsv
     global $ERROR;
@@ -292,48 +384,55 @@ function glog_find_id($records, $id){							/* Возвращает (перву�
     };
     return $pos;
 };
-function glog_getcount($curdate, $state=0, $use_cache=true) {	// Возвращает количество анкет с состоянием $state за дату $curdate.
-    $cache_file = 'glog_getcount.cache';
-    $result=0;
-// С версии 0.5.1: расчитанные данные кешируются в файле 'glog_getcount.cache' в виде сериализованного массива.
-//	Формат массива:
-//		gc[$curdate][$state]['c'] - количество заявок со статусом $state за дату $curdate;
-//		gc[$curdate][$state]['ts'] - timestamp - дата актуальности данных кеша, если меньше чем дата последней модификации файла-лога за $curdate, то данные кеша не используются, обновляются.
+function glog_get_count($curdate, $state="") {	// Возвращает количество анкет с состоянием $state за дату $curdate.
+    static $counts;
     
-    if (($curdate==date("Y-m-d")) || !glog_rusdate($curdate)) $use_cache=false; // Не используем кэш для текущего дня, а также для виртуальных дат, например, "all", "toModerate".
     
-    $cache = @file($cache_file);
-    if ($cache != false) {
-        $gc = @unserialize($cache[0]);
-    } else {
-        $gc = array();
+    // glog_dosyslog(__FUNCTION__.": getcount for $curdate ($state) Start");
+	$cache_file = GLOG_COUNTS_CACHE;
+	
+    $result = array();
+
+    
+    if (empty($counts)){
+        // Чтение кэша
+        $tmp = glog_file_read($cache_file);
+        if ($tmp){
+            $counts = @unserialize($tmp);
+            if ( ! is_array($counts) ){
+                glog_dosyslog(__FUNCTION__ . ": ERROR: Ошибка десериализации " . $cache_file );
+                $counts = array();
+            };
+        }else{
+            $counts = array();
+        };
     };
-    //print_r($gc);
-    if (!empty($gc) && isset($gc[$curdate][$state]['c']) && isset($gc[$curdate][$state]['ts']) && ($gc[$curdate][$state]['ts']==@filemtime(glog_get_filename($curdate))) && $use_cache) {
-        $result = $gc[$curdate][$state]['c'];	
-    } else {
-        $records = glog_read($curdate,$state);
-        $result = empty($records[0])?0:count($records);
+    
+    if ( ! empty($counts[$curdate]) ){
+        $result = $counts[$curdate];
+    }
+    
+    if ($state !== ""){
+        $result = isset($result[$state]) ? (int) $result[$state] : false;
+    }else{
+        
+        if ( is_array($result) ){
+            foreach($result as $k=>$v) $result[$k] = (int) $v;
+        }else{
+            $result = array("all"=>false);
+        }
     };
 
-    // Сохраняем расчеты в кэш-файле
-    $gc[$curdate][$state]['c'] = $result;
-    $gc[$curdate][$state]['ts']=@filemtime(glog_get_filename($curdate));
-            
-    // Блокируем файл 
-    $cache = fopen($cache_file,"a+");
-    flock($cache, LOCK_EX);
-    // сворачиваем массив в строку 
-    $file_content = serialize($gc);
-        
-    // Перезаписываем файл и снимаем блокировку 
-    ftruncate($cache,0);
-    fwrite($cache, $file_content);
-    fflush($cache);
-    flock($cache, LOCK_UN);
-    fclose($cache);	
+    // glog_dosyslog(__FUNCTION__.": getcount for $curdate ($state) Finish " . json_encode($result) );
         
     return $result;
+};
+function glog_get_date($record){                    // Возвращает дату анкеты или текущую дату, если дата анкеты не задана
+    if ( !empty( $record["date"]) ){
+        return substr($record["date"], 0, 10);
+    }else{
+        return date("Y-m-d");
+    };
 };
 function glog_get_dates($asc=false, $start_date="", $end_date="") {	    // Возвращает масив $dates[] - список дат, соответствующих найденным лог файлам в каталоге $dir.
     // $asc определяет порядок сортировки возвращаемого массива. $acs=true - по возрастанию. 
@@ -577,10 +676,13 @@ function glog_read($curdate, $state) {						// Читает файл DATA_DIR/gl
         if ($curdate == "all") $dates = glog_get_dates(true);
         else $dates = $curdate;
         
-        glog_dosyslog("NOTICE: GLOG_READ(): glog_get_dates вернула даты: **".implode(",",$dates)."**.");
+        // glog_dosyslog("NOTICE: GLOG_READ(): glog_get_dates вернула даты: **".implode(",",$dates)."**.");
         foreach($dates as $k=>$v){
-            if (glog_getcount($v,$state,true)>0) { // используем кеш glog_getcount.cache
-                $records = array_merge($records, glog_read($v,$state));
+            $cached_count = glog_get_count($v,$state);
+            if ( ! $cached_count || ($cached_count>0) ) { // используем кеш glog_getcount.cache
+                $addon_records = glog_read($v,$state);
+                if ( ! $cached_count ) glog_cache_count($addon_records); 
+                $records = array_merge($records, $addon_records);
             };
         };
         if (DIAGNOSTICS_MODE)  glog_dosyslog("NOTICE: GLOG_READ(): вызов функции. Параметры: curdate='$curdate', state='$state'. Прочитано:".(isset($records[0])?count($records):0)." анкет.");
@@ -919,6 +1021,8 @@ function glog_write($curdate, $record){ 					/* Записывает анкет�
         };
     };
     fclose($new_log);
+    
+    glog_cache_count($curdate);
 
     return true;
 };
