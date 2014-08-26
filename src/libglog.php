@@ -116,7 +116,7 @@ function glog_cache_count($recordsORcurdate){               // Сохраняе�
     if ( ! $res ){
         glog_dosyslog(__FUNCTION__ . ": ERROR: Ошибка сохранения кэша '" . $cache_file . "'.");
     }else{
-        glog_dosyslog(__FUNCTION__ . ": NOTICE: ". json_encode($this_counts));
+        // glog_dosyslog(__FUNCTION__ . ": NOTICE: ". json_encode($this_counts));
     };
     
     return $res;
@@ -388,7 +388,7 @@ function glog_get_count($curdate, $state="") {	// Возвращает коли�
     static $counts;
     
     
-    glog_dosyslog(__FUNCTION__.": getcount for $curdate ($state) Start");
+    // glog_dosyslog(__FUNCTION__.": getcount for $curdate ($state) Start");
 	$cache_file = GLOG_COUNTS_CACHE;
 	
     $result = array();
@@ -425,7 +425,7 @@ function glog_get_count($curdate, $state="") {	// Возвращает коли�
     
     if ( ( $state == "all") && ( $result === false ) ) glog_cache_count($curdate);
 
-    glog_dosyslog(__FUNCTION__.": getcount for $curdate ($state) Finish " . json_encode($result) );
+    // glog_dosyslog(__FUNCTION__.": getcount for $curdate ($state) Finish " . json_encode($result) );
         
     return $result;
 };
