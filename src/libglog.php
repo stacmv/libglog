@@ -564,7 +564,7 @@ function glog_get_state_comment($anketa, array $ignore_states = array() ) { // �
     
     return $result;
 };
-function glog_get_state_date($anketa, array $ignore_states = array() ) { // Возвращает коментарий оператора последнего (текущего) статуса анкеты.
+function glog_get_state_date($anketa, array $ignore_states = array() ) { // Возвращает дату последнего (текущего) статуса анкеты.
     $result = false;
     
     if (!$anketa) return $result;
