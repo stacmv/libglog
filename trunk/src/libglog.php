@@ -1,6 +1,6 @@
 <?php
 
-define("LIBGLOG_VERSION", "0.7");
+define("LIBGLOG_VERSION", "0.7.1");
 define("LIBGLOG_REVISION", '$Rev$');
 
 error_reporting(E_ALL);
@@ -553,6 +553,35 @@ function glog_get_state_comment($anketa, array $ignore_states = array() ) { // �
             --$k;
             if (isset($history[$k]["comment"])){
                 $result = $history[$k]["comment"];
+                $state = @$history[$k]["state"];
+            }
+        };
+    }
+    
+    $matches = array();
+    preg_match("/\(([^\)]*)\)/",$result, $matches);
+    $result = isset($matches[1])?$matches[1]:$result;
+    
+    return $result;
+};
+function glog_get_state_date($anketa, array $ignore_states = array() ) { // Возвращает коментарий оператора последнего (текущего) статуса анкеты.
+    $result = false;
+    
+    if (!$anketa) return $result;
+    
+    $history = @$anketa['history'];
+    if (!$history) return $result;
+    
+    $k = count($history)-1;
+    if (isset($history[$k]["date"])){
+        $result = $history[$k]["date"];
+        $state = @$history[$k]["state"];
+    }
+    if ( ! empty($ignore_states) ){
+        while (in_array($state, $ignore_states) && ($k >= -1) ){ // Если $k < 0, значит нет подходящих статусов, например, все в списке игнорируемых.
+            --$k;
+            if (isset($history[$k]["date"])){
+                $result = $history[$k]["date"];
                 $state = @$history[$k]["state"];
             }
         };
