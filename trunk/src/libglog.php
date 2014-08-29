@@ -1,6 +1,6 @@
 <?php
 
-define("LIBGLOG_VERSION", "0.7.1");
+define("LIBGLOG_VERSION", "0.7.2");
 define("LIBGLOG_REVISION", '$Rev$');
 
 error_reporting(E_ALL);
@@ -513,7 +513,7 @@ function glog_get_record($id, $curdate){
  * @result int последний статус записи с учетом игнорируемых статусов
  *
  */
-function glog_get_state($record, $default_state = 0, array $ignore_states = array() ) { 
+function glog_get_state($record, array $ignore_states = array(), $default_state = 0) { 
     $result = $default_state;
     
     if (!$record) return $result;
