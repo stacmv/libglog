@@ -131,6 +131,32 @@ function glog_translit($s) {                                        //Возвр
 
 	return $result;
 };
+function glog_show_array_count($arr, $sort=true){ 
+
+    $unique_arr = array_unique($arr);
+    $cu = count($unique_arr);
+    $ca = count($arr);
+
+    $id = uniqid("id");
+       
+    if ($ca>0){
+        $HTML = '<a href="#" id="'.$id.'_link" onclick="var el = document.getElementById(\''.$id.'\'); if (el.style.display == \'none\') el.style.display=\'block\'; else el.style.display=\'none\'; return false;">'.($ca == $cu ? $ca : $cu . "/" . $ca).'</a>';
+        $HTML .= "<div id='".$id."' style='display:none;'>";
+        if ($sort) sort($arr);
+        for($i=0; $i<$ca;$i++){
+            if ($i && $arr[$i] == $arr[$i-1]){
+                $HTML .= "<br>" . "<span style='color:#ccc'>".$arr[$i]."</span>";
+            }else{
+                $HTML .= "<br>" . $arr[$i];
+            }
+        }
+        $HTML .= "</div>";
+    }else{
+        $HTML = $ca;
+    }
+    return $HTML;
+}
+
 function glog_show_phone($phone_cleared){ 						    // Форматирует номер телефона (только цифры) к  виду (123) 456-78-90
 	return "(" . substr($phone_cleared, 0, 3) . ") " . substr($phone_cleared, 3, 3) . "-" . substr($phone_cleared, 6, 2) . "-" . substr($phone_cleared, 8, 3);
 }
