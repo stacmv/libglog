@@ -305,6 +305,13 @@ function glog_http_request($method, $url, $data, $use_cache = true, $content_typ
 }
 
 // ----------------
+if (!function_exists("get_callee")){
+    function get_callee(){
+        $dbt    = debug_backtrace();
+        $callee = $dbt[2]["function"] . (!empty($dbt[3]) ? " < ".$dbt[3]["function"] : ""); // вызывающая функция; для целей логирования.
+        return $callee;
+    };
+};
 if (!function_exists("dump")){
     function dump($var, $title="") {						// Печатает дамп переменной, окруженной тегами PRE
         if ($title) echo "$title : \n";
