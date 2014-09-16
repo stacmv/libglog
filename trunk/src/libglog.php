@@ -1,6 +1,6 @@
 <?php
 
-define("LIBGLOG_VERSION", "0.7.3");
+define("LIBGLOG_VERSION", "0.7.4");
 define("LIBGLOG_REVISION", '$Rev$');
 
 error_reporting(E_ALL);
@@ -471,6 +471,25 @@ function glog_get_dates($asc=false, $start_date="", $end_date="") {	    // Во�
 
     return $dates;   
 };
+function glog_get_id($record){                      // Возвращает полный id заявки: id@date
+    
+    if ( empty($record) ){
+        glog_dosyslog(__FUNCTION__.": WARNING: Empty record.");
+        return "";
+    };
+    if ( ! isset($record["id"]) ){
+        glog_dosyslog(__FUNCTION__.": ERROR: Id is not set. Data: '".serialize($record)."'.");
+        return "";
+    }elseif ( ! isset($record["date"]) ){
+        glog_dosyslog(__FUNCTION__.": ERROR: Date is not set. Data: '".serialize($record)."'.");
+        return "";
+    };
+    
+    $id = $record["id"];
+    $date = substr($record["date"], 0, 10);
+    
+    return $id."@".$date;
+}
 function glog_get_filename($curdate, $checkFileExists=false) {// Возвращает имя файла-лога за дату $curdate
 // При checkFileExists=true возвращается false, если файл не существует.
     
