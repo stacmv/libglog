@@ -189,6 +189,25 @@ function glog_file_read($file_name, $title="" ){
 
     return $res;
 }
+function glog_file_read_as_array($file_name){
+    $res = array();
+    
+    if (file_exists($file_name)){
+        $res = @file($file_name, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        
+        if ( ! $res ){
+            if ($res === array()){
+                glog_dosyslog(__FUNCTION__ . ": WARNING: Файл '" . $file_name . "' пустой.");
+            }else{
+                glog_dosyslog(__FUNCTION__ . ": ERROR: Ошибка чтения " . $file_name );
+            };
+        };
+    }else{
+        glog_dosyslog(__FUNCTION__ . ": WARNING: Файл '" . $file_name . "' не существует.");
+    }
+
+    return $res;
+}
 function glog_mail_create_multipart( $text, $attachment_content, $attachment_name="", $from="" ){
     
     
