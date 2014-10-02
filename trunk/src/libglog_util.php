@@ -116,7 +116,7 @@ function glog_codify($str){                                         // Возв�
     
 	$result = strtolower($result);
     
-	$result = urlencode($result);
+	$result = str_replace("%","_prc_", urlencode($result));
 	
 	return $result;
 };
