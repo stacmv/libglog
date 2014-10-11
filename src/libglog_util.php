@@ -31,11 +31,47 @@ function glog_dosyslog($message) {								// Пишет сообщение в с
         return false;
     };
 };
+function glog_isodate($date, $withTime = false) {				/* Принимает дату в формате "дд.мм.гггг" и возвращает в формате "гггг-мм-дд" */
+    
+    if (preg_match("/\d{4}\-\d\d\-\d\d/", $date)) return $date; // дата уже в формате iso
+    
+    if ( is_numeric($date) ){ // unix timestamp
+        if ($withTime){
+            return date("c", $date);
+        }else{
+            return date("Y-m-d");
+        };
+    };
+    
+    $m = (int) substr($date,3,2); $m = str_pad($m, 2, "0", STR_PAD_LEFT);
+    $d = (int) substr($date,0,2); $d = str_pad($d, 2, "0", STR_PAD_LEFT);
+    $y = (int) substr($date,6,4);
+    if (!checkdate($m,$d,$y)) {
+        return false;
+    } else {
+    
+        if ($withTime){
+            $h = substr($date,11,2); $h = str_pad($h, 2, "0", STR_PAD_LEFT);
+            $i = substr($date,14,2); $i = str_pad($i, 2, "0", STR_PAD_LEFT);
+            $s = substr($date,17,2); $s = str_pad($s, 2, "0", STR_PAD_LEFT);
+            
+            return "$y-$m-$d $h:$i:$s";
+        }else{
+            return "$y-$m-$d";
+        };
+    }; 
+};
+
 function glog_rusdate($date, $withTime = false) {				/* Принимает дату в формате "гггг-мм-дд" и возвращает в формате "дд.мм.гггг" */
     
     if (preg_match("/\d\d\.\d\d\.\d{4}/", $date)) return $date; // дата уже в формате дд.мм.гггг
     if ($date == "all") return "";
     if ($date == "toModerate") return "";
+    
+    if ( is_numeric($date) ){ // unix timestamp
+        $date = date("c", $date);
+    };
+    
     $m = (int) substr($date,5,2); $m = str_pad($m, 2, "0", STR_PAD_LEFT);
     $d = (int) substr($date,8,2); $d = str_pad($d, 2, "0", STR_PAD_LEFT);
     $y = (int) substr($date,0,4);
