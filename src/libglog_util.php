@@ -90,6 +90,47 @@ function glog_rusdate($date, $withTime = false) {				/* Принимает да�
         }
     }; 
 };
+function glog_weekday($day_no="", $short = false, $lang="RU"){                                 // Возвращает наименгование для недели по его номеру (0 - вс, 6 - сб )
+
+    $day_names = glog_weekdays($lang);
+    
+    if ( ! $day_no){
+        $day_no = date("w");
+    };
+    
+    if ( isset($day_names[$day_no]) ){
+        return $day_names[$day_no];
+    }else{
+        glog_dosyslog(__FUNCTION__.": ERROR: ". get_callee() . ": Bad day number '".$day_no."'.");
+        return "";
+    } 
+    
+}
+function glog_weekdays($short = false, $lang="RU"){
+
+    if ( $short ) {
+        return array(
+            1 => "пн",
+            2 => "вт",
+            3 => "ср",
+            4 => "чт",
+            5 => "пт",
+            6 => "сб",
+            0 => "вс"
+        );
+    }else{
+        return array(
+            1 => "понедельник",
+            2 => "вторник",
+            3 => "среда",
+            4 => "четверг",
+            5 => "пятница",
+            6 => "суббота",
+            0 => "воскресенье"
+        );
+    };
+};
+
 function glog_get_age($anketa, $add_units = false) { 				// Возвращает текущий возраст в формате строки "n" ($add_units = false) или "n лет" ($add_units = true). Принимает анкету.
     
     $age = "";
