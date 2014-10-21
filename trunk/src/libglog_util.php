@@ -131,33 +131,47 @@ function glog_weekdays($short = false, $lang="RU"){
     };
 };
 
-function glog_get_age($anketa, $add_units = false) { 				// Возвращает текущий возраст в формате строки "n" ($add_units = false) или "n лет" ($add_units = true). Принимает анкету.
+function glog_get_age($anketaORbirthdate, $add_units = false) { 				// Возвращает текущий возраст в формате строки "n" ($add_units = false) или "n лет" ($add_units = true). Принимает анкету.
     
     $age = "";
     
-    if (!empty($anketa["age_field"]) && !empty($anketa["formdata"][$anketa["age_field"]])){
-        $age = $anketa["formdata"][$anketa["age_field"]];    
+    if ( is_string($anketaORbirthdate) ){
+        $birthdate = $anketaORbirthdate;
+        
+        $birthdate = glog_isodate($birthdate);
+        
+        $byear  = substr($birthdate,0,4);
+        $bmonth = substr($birthdate,5,2);
+        $bday   = substr($birthdate,8,2);
+        
     }else{
-        if(!empty($anketa["birthdate_field"])){
-            $birthdate = @$anketa["formdata"][$anketa["birthdate_field"]];
-            $byear = @substr($birthdate,0,4);
-            $bmonth = @substr($birthdate,5,2);
-            $bday = @substr($birthdate,8,2);
+        $anketa = $anketaORbirthdate;
+   
+        if (!empty($anketa["age_field"]) && !empty($anketa["formdata"][$anketa["age_field"]])){
+            $age = $anketa["formdata"][$anketa["age_field"]];    
         }else{
-            $byear = @$anketa["formdata"][$anketa["birth_year_field"]];
-            $bmonth = @$anketa["formdata"][$anketa["birth_month_field"]];
-            $bday = @$anketa["formdata"][$anketa["birth_day_field"]];
-        };
-
-        if ($byear || $bmonth || $bday){
-            $age = (date('Y')-$byear);
-            if ((int)$bmonth > (int)date('m')){
-                $age--;
-            } elseif (((int)$bmonth == (int)date('m')) && ((int) $bday > (int) date('d'))) {
-                $age--;
+            if(!empty($anketa["birthdate_field"])){
+                $birthdate = @$anketa["formdata"][$anketa["birthdate_field"]];
+                $byear = @substr($birthdate,0,4);
+                $bmonth = @substr($birthdate,5,2);
+                $bday = @substr($birthdate,8,2);
+            }else{
+                $byear = @$anketa["formdata"][$anketa["birth_year_field"]];
+                $bmonth = @$anketa["formdata"][$anketa["birth_month_field"]];
+                $bday = @$anketa["formdata"][$anketa["birth_day_field"]];
             };
         };
     };
+
+    if ($byear || $bmonth || $bday){
+        $age = (date('Y')-$byear);
+        if ((int)$bmonth > (int)date('m')){
+            $age--;
+        } elseif (((int)$bmonth == (int)date('m')) && ((int) $bday > (int) date('d'))) {
+            $age--;
+        };
+    };
+    
     
     if ( $add_units ) $age = glog_get_age_str($age);    
     
