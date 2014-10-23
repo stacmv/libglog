@@ -414,6 +414,19 @@ function glog_http_request($method, $url, $data, $use_cache = true, $content_typ
     return $result;
 }
 
+function glog_str_limit($str, $limit, $noHTML = false){  
+    
+    if (mb_strlen($str, "UTF-8") > $limit){
+        if ($noHTML){
+            return mb_substr($str,0, $limit - 3, "UTF-8") . "&hellip;";
+        }else{
+            return "<span title='".htmlspecialchars($str)."'>" . mb_substr($str,0, $limit - 3, "UTF-8") . "&hellip;</span>";
+        };
+    }else{
+        return $str;
+    }
+};
+
 // ----------------
 if (!function_exists("get_callee")){
     function get_callee(){
