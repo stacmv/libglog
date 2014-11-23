@@ -80,11 +80,18 @@ function glog_rusdate($date, $withTime = false) {				/* Принимает да�
     } else {
     
         if ($withTime){
-            $h = substr($date,11,2); $h = str_pad($h, 2, "0", STR_PAD_LEFT);
-            $i = substr($date,14,2); $i = str_pad($i, 2, "0", STR_PAD_LEFT);
-            $s = substr($date,17,2); $s = str_pad($s, 2, "0", STR_PAD_LEFT);
-            
-            return "$d.$m.$y $h:$i:$s";
+            if (strlen(substr($date, 11)) == 4){ // время без секунд
+                $h = substr($date,11,2); $h = str_pad($h, 2, "0", STR_PAD_LEFT);
+                $i = substr($date,14,2); $i = str_pad($i, 2, "0", STR_PAD_LEFT);
+                
+                return "$d.$m.$y $h:$i";
+            }else{
+                $h = substr($date,11,2); $h = str_pad($h, 2, "0", STR_PAD_LEFT);
+                $i = substr($date,14,2); $i = str_pad($i, 2, "0", STR_PAD_LEFT);
+                $s = substr($date,17,2); $s = str_pad($s, 2, "0", STR_PAD_LEFT);
+                
+                return "$d.$m.$y $h:$i:$s";
+            };
         }else{
             return "$d.$m.$y";
         }
@@ -179,14 +186,19 @@ function glog_get_age($anketaORbirthdate, $add_units = false) { 				// Возв�
 };
 function glog_get_age_str($age){    // возвращает строку вида "n лет"
     
-    switch (substr($age,-1,1)) {
+    return glog_get_num_with_unit($age, "год","года", "лет");
+
+}
+function glog_get_num_with_unit($num, $unit1="", $unit2_4="",$unit5_9=""){    // возвращает строку вида "n чего-нибудь"
+    
+    switch (substr($num,-1,1)) {
         case 1:
-            $suf = "год";
+            $suf = $unit1;
             break;
         case 2:
         case 3:
         case 4:
-            $suf = "года";
+            $suf = $unit2_4;
             break;
         case 5:
         case 6:
@@ -194,11 +206,11 @@ function glog_get_age_str($age){    // возвращает строку вид�
         case 8:
         case 9:
         default:
-            $suf = "лет";
+            $suf = $unit5_9;
     };
-    $age = $age." ".$suf;
     
-    return $age;
+    
+    return trim($num." ".$suf);
 }
 function glog_codify($str){                                         // Возвращает строку в виде, пригодном для использования в именах файлов, url, css-классах, ... .
 	$result = glog_translit($str);
