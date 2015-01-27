@@ -213,7 +213,12 @@ function glog_get_num_with_unit($num, $unit1="", $unit2_4="",$unit5_9=""){    //
     return trim($num." ".$suf);
 }
 function glog_codify($str){                                         // Возвращает строку в виде, пригодном для использования в именах файлов, url, css-классах, ... .
-	$result = glog_translit($str);
+	
+    if ( ! is_string($str) ){
+        glog_dosyslog(__FUNCTION__.get_callee().": ERROR: Parameter str should be string, ".gettype($str)." given.");
+    };
+    
+    $result = glog_translit($str);
     
 	$result = str_replace(array("+","&"," ",",",":",";",".",",","/","\\","(",")","'","\""),array("_plus_","_and_","-","-","-","-"),$result); 
     
