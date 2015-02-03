@@ -1,6 +1,6 @@
 <?php
 
-define("LIBGLOG_VERSION", "0.12.1");
+define("LIBGLOG_VERSION", "0.13.0");
 define("LIBGLOG_REVISION", '$Rev$');
 
 error_reporting(E_ALL);
