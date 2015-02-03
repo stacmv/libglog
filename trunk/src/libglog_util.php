@@ -31,7 +31,9 @@ function glog_dosyslog($message) {								// Пишет сообщение в с
         return false;
     };
 };
-function glog_isodate($date, $withTime = false) {				/* Принимает дату в формате "дд.мм.гггг" и возвращает в формате "гггг-мм-дд" */
+function glog_isodate($date = "", $withTime = false) {				/* Принимает дату в формате "дд.мм.гггг" и возвращает в формате "гггг-мм-дд" */
+    
+    if ( ! $date ) $date = date("Y-m-d");
     
     if (preg_match("/\d{4}\-\d\d\-\d\d/", $date)) return $date; // дата уже в формате iso
     
@@ -62,7 +64,9 @@ function glog_isodate($date, $withTime = false) {				/* Принимает да�
     }; 
 };
 
-function glog_rusdate($date, $withTime = false) {				/* Принимает дату в формате "гггг-мм-дд" и возвращает в формате "дд.мм.гггг" */
+function glog_rusdate($date="", $withTime = false) {				/* Принимает дату в формате "гггг-мм-дд" и возвращает в формате "дд.мм.гггг" */
+    
+    if ( ! $date ) $date = date("Y-m-d");
     
     if (preg_match("/\d\d\.\d\d\.\d{4}/", $date)) return $date; // дата уже в формате дд.мм.гггг
     if ($date == "all") return "";
@@ -454,10 +458,12 @@ if (!function_exists("get_callee")){
 };
 if (!function_exists("dump")){
     function dump($var, $title="") {						// Печатает дамп переменной, окруженной тегами PRE
-        if ($title) echo "$title : \n";
-        echo "<pre>";
-        var_dump($var);
-        echo "</pre>"; 
+        if ( (defined("DEV_MODE") && DEV_MODE) || ! defined("DEV_MODE") ){
+            if ($title) echo "$title : \n";
+            echo "<pre>";
+            var_dump($var);
+            echo "</pre>"; 
+        };
     };
 };
 // ----------------
