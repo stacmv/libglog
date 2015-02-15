@@ -1,6 +1,6 @@
 <?php
 
-define("LIBGLOG_VERSION", "0.13.0");
+define("LIBGLOG_VERSION", "0.14.0");
 define("LIBGLOG_REVISION", '$Rev$');
 
 error_reporting(E_ALL);
@@ -19,6 +19,8 @@ if(!defined("GLOG_TEMPLATES_DIR")) define("GLOG_TEMPLATES_DIR",  "../templates/"
 if(!defined("EMAIL")) define("EMAIL","stacmv+libglog@gmail.com");
 
 if(!defined("DIAGNOSTICS_MODE")) define("DIAGNOSTICS_MODE",false);
+
+if(!defined("TEMPLATE_DEFAULT")) define("TEMPLATE_DEFAULT", "<div class='anketa'><fieldset><legend>ID:%%id%% от %%curdate%%</legend><p>Формат представления анкеты не задан.</p></fieldset></div>");
 
 if (!is_dir(DATA_DIR)) mkdir(DATA_DIR, 0777, true);
 if (!is_dir(DATA_DIR)) die("libglog: code: DATA_DIR");
@@ -788,35 +790,6 @@ function glog_read($curdate, $state) {						// Читает файл DATA_DIR/gl
         return array();
     }; 
 };		
-function glog_render($template_file, $data){
-    $HTML = "";
-    
-    if (file_exists($template_file)){
-        $template = file_get_contents($template_file);
-        if (empty($template)){
-            glog_dosyslog(__FUNCTION__.": ERROR: Файл шаблона пустой - '".$template_file."'.");
-            $template = "<div class='anketa'><fieldset><legend>ID:%%id%% от %%curdate%%</legend><p>Формат представления анкеты не задан.</p></fieldset></div>";
-        };
-        // parse template.
-        $template = str_replace("\r\n", "\n", $template);
-        $template = str_replace("\r", "\n", $template);
-        
-        // Подстановка данных
-        foreach($data as $k=>$v){
-            $template = str_replace("%%".$k."%%", $v, $template);
-        };
-            
-        $template = preg_replace("/%%[^%]+%%/","",$template); // удаляем все placeholders для которых нет данных во входных параметрах.
-        $HTML = $template;
-        //glog_dosyslog(__FUNCTION__.": NOTICE: Успешно применен шаблон '".$template_file."'.");
-    
-    }else{
-		$HTML = "<p><b>Ошибка!</b> Файл шаблона не найден".(DIAGNOSTICS_MODE || ($_SERVER["HTTP_HOST"] == "localhost") ? " - '".$template_file."'" : "")."</p>";
-            glog_dosyslog(__FUNCTION__.": ERROR: Файл шаблона не найден - '".$template_file."'.");
-    };
-    
-    return $HTML;	
-};
 function glog_send($record, $mode, $options = array() ){
     global $CFG; // настройки отправки анкет задаются в APP_DIR/settings.ini
     

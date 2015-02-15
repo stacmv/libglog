@@ -435,6 +435,36 @@ function glog_http_request($method, $url, $data, $use_cache = true, $content_typ
     return $result;
 }
 
+function glog_render($template_file, $data){
+    $HTML = "";
+    
+    if (file_exists($template_file)){
+        $template = file_get_contents($template_file);
+        if (empty($template)){
+            glog_dosyslog(__FUNCTION__.": ERROR: Файл шаблона пустой - '".$template_file."'.");
+            $template = defined("TEMPLATE_DEFAULT") ? TEMPLATE_DEFAULT : "";
+        };
+        // parse template.
+        $template = str_replace("\r\n", "\n", $template);
+        $template = str_replace("\r", "\n", $template);
+        
+        // Подстановка данных
+        foreach($data as $k=>$v){
+            $template = str_replace("%%".$k."%%", $v, $template);
+        };
+            
+        $template = preg_replace("/%%[^%]+%%/","",$template); // удаляем все placeholders для которых нет данных во входных параметрах.
+        $HTML = $template;
+        //glog_dosyslog(__FUNCTION__.": NOTICE: Успешно применен шаблон '".$template_file."'.");
+    
+    }else{
+		$HTML = "<p><b>Ошибка!</b> Файл шаблона не найден".(DIAGNOSTICS_MODE || ($_SERVER["HTTP_HOST"] == "localhost") ? " - '".$template_file."'" : "")."</p>";
+            glog_dosyslog(__FUNCTION__.": ERROR: Файл шаблона не найден - '".$template_file."'.");
+    };
+    
+    return $HTML;	
+};
+
 function glog_str_limit($str, $limit, $noHTML = false){  
     
     if (mb_strlen($str, "UTF-8") > $limit){
