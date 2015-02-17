@@ -435,7 +435,7 @@ function glog_http_request($method, $url, $data, $use_cache = true, $content_typ
     return $result;
 }
 
-function glog_render($template_file, $data){
+function glog_render($template_file, array $data){
     $HTML = "";
     
     if (file_exists($template_file)){
