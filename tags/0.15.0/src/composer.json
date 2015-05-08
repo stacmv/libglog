@@ -1,0 +1,14 @@
+{
+    "name": "optimit/libglog",
+    "description": "Glog + utility libraries",
+    "authors": [
+        {
+            "name": "Vyacheslav Matsnev",
+            "email": "stacmv@gmail.com"
+        }
+    ],
+    "autoload": {
+       "files": ["libglog_util.php"]
+    },
+    "require": {}
+}
