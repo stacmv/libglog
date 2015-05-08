@@ -1,8 +1,44 @@
 <?php
 
+function glog_get_log_levels(){
+    
+    return array(
+        "DEBUG",
+        "NOTICE",
+        "INFO",
+        "WARNING",
+        "ERROR",
+        "FATAL ERROR",
+    );
+    
+}
+function glog_log_level($level=""){
+    static $log_level;
+    
+    $levels = glog_get_log_levels();
+    
+    if ( ! $level ){
+        if ( $log_level ) return $log_level;
+        else return 0;
+    }else{
+        $log_level = array_search($level, $levels);
+    };
+}
+function glog_get_msg_log_level($message){
+    $levels = glog_get_log_levels();
+    
+    for( $i = count($levels)-1; $i>=0; $i--){
+        if ( strpos($message, $levels[$i]) > 0) return $i;
+    };
+    
+    return $i;
+}
 function glog_dosyslog($message) {								// Пишет сообщение в системный лог при включенной опции GLOG_DO_SYSLOG.
 
     if (GLOG_DO_SYSLOG) {
+        
+        if ( glog_get_msg_log_level($message) < glog_log_level() ) return false;
+        
         if (!is_dir(dirname(GLOG_SYSLOG))) mkdir(dirname(GLOG_SYSLOG), 0777, true);
         // Блокируем файл
         $syslog = GLOG_SYSLOG;
