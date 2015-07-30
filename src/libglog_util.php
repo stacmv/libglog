@@ -1,8 +1,9 @@
 <?php
+define("LIBGLOGUTIL_VERSION", "0.16.0");
 
 function glog_dosyslog($message) {								// Пишет сообщение в системный лог при включенной опции GLOG_DO_SYSLOG.
 
-    if (GLOG_DO_SYSLOG) {
+    if (defined("GLOG_DO_SYSLOG") && GLOG_DO_SYSLOG) {
         if (!is_dir(dirname(GLOG_SYSLOG))) mkdir(dirname(GLOG_SYSLOG), 0777, true);
         // Блокируем файл
         $syslog = GLOG_SYSLOG;
@@ -31,6 +32,7 @@ function glog_dosyslog($message) {								// Пишет сообщение в с
         return false;
     };
 };
+
 function glog_isodate($date = "", $withTime = false) {				/* Принимает дату в формате "дд.мм.гггг" и возвращает в формате "гггг-мм-дд" */
     
     if ( ! $date ) $date = date("Y-m-d");
@@ -63,7 +65,6 @@ function glog_isodate($date = "", $withTime = false) {				/* Принимает 
         };
     }; 
 };
-
 function glog_rusdate($date="", $withTime = false) {				/* Принимает дату в формате "гггг-мм-дд" и возвращает в формате "дд.мм.гггг" */
     
     if ( ! $date ) $date = date("Y-m-d");
@@ -141,6 +142,25 @@ function glog_weekdays($short = false, $lang="RU"){
         );
     };
 };
+function glog_period($start_date="", $end_date="", $sort = "asc"){   // Возвращает массив дат от start_date до end_date включительно
+    
+    $start_date = $start_date  or glog_isodate(); // today;
+    $end_date = $end_date or glog_isodate(strtotime("+1 day", strtotime($start_date)));
+    
+    if ($sort != "desc") $sort = "asc";
+       
+    $dates = array();
+    $date = $start_date;
+    while ($date <= $end_date) {
+        $dates[] = $date;
+        $date = glog_isodate(strtotime("+1 day", strtotime($date)));
+    }
+    unset ($date);
+    
+    if ($sort == "desc") $dates = array_reverse($dates);
+    
+    return $dates;
+}
 
 function glog_get_age($anketaORbirthdate, $add_units = false) { 				// Возвращает текущий возраст в формате строки "n" ($add_units = false) или "n лет" ($add_units = true). Принимает анкету.
     
