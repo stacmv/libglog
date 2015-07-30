@@ -41,7 +41,7 @@ function glog_isodate($date = "", $withTime = false) {				/* Принимает 
         if ($withTime){
             return date("c", $date);
         }else{
-            return date("Y-m-d");
+            return date("Y-m-d", $date);
         };
     };
     
@@ -466,6 +466,8 @@ function glog_render($template_file, array $data){
 };
 
 function glog_str_limit($str, $limit, $noHTML = false){  
+    
+    if ( ! $str ) return  "";
     
     if (mb_strlen($str, "UTF-8") > $limit){
         if ($noHTML){
