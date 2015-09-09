@@ -1,5 +1,5 @@
 <?php
-define("LIBGLOGUTIL_VERSION", "0.17.0");
+define("LIBGLOGUTIL_VERSION", "0.18.0");
 
 function glog_get_log_levels(){
     
@@ -35,38 +35,57 @@ function glog_get_msg_log_level($message){
     return $i;
 }
 function glog_dosyslog($message) {								// Пишет сообщение в системный лог при включенной опции GLOG_DO_SYSLOG.
-
-    if (defined("GLOG_DO_SYSLOG") && GLOG_DO_SYSLOG) {
+    static $last_invokation_time;
+    static $last_memory_usage;
+    
+    if ( ! defined("GLOG_DO_SYSLOG") define("GLOG_DO_SYSLOG", false));
+    if ( ! defined("GLOG_DO_PROFILE") define("GLOG_DO_PROFILE", false));
+    
+    if ( glog_get_msg_log_level($message) < glog_log_level() ) return false;
         
-        if ( glog_get_msg_log_level($message) < glog_log_level() ) return false;
-        
+    if (GLOG_DO_SYSLOG || GLOG_DO_PROFILE){
+        if ( ! defined("GLOG_SYSLOG") ){
+            die("Code: ".__FUNCTION__."-".__LINE__."-GLOG_SYSLOG");
+        };
         if (!is_dir(dirname(GLOG_SYSLOG))) mkdir(dirname(GLOG_SYSLOG), 0777, true);
-        // Блокируем файл
-        $syslog = GLOG_SYSLOG;
+
+    
+    
+        if ( ! $last_invokation_time ) $last_invokation_time = isset($_SERVER['REQUEST_TIME_FLOAT']) ? $_SERVER['REQUEST_TIME_FLOAT'] : microtime(true);
+        if ( ! $last_memory_usage ) $last_memory_usage = memory_get_usage(true);
+        
+        $invokation_time = microtime(true);
+        $memory_usage = memory_get_usage(true);
         
         $data = array(
             @$_SERVER["REMOTE_ADDR"],
             date("Y-m-d\TH:i:s"),
+            GLOG_DO_PROFILE ? "+" . ($invokation_time - $last_invokation_time)."s" : "",
+            GLOG_DO_PROFILE ? glog_convert_size($memory_usage) . "(" . ($memory_usage > $last_memory_usage ? "+" :"") . ($memory_usage-$last_memory_usage) . "b)" : "",
             $message,
         );
+           
+               
+        $str = implode("\t", $data) . "\n";
         
-        $message = implode("\t", $data) . "\n";
-    
-        if (file_put_contents($syslog, $message, FILE_APPEND) === false) {
-            $Subject = "Ошибка: ".$_SERVER['HTTP_HOST'].$_SERVER['SCRIPT_NAME'];
+        if (file_put_contents(GLOG_SYSLOG, $str, FILE_APPEND) === false) {
+            $Subject = "Error in ".$_SERVER['HTTP_HOST'].$_SERVER['SCRIPT_NAME'];
             $extraheader = "Content-type: text/plain; charset=UTF-8";
-            $message= "Невозможно записать данные в системный лог '".$syslog."'!\nНе записанные  данные:\n".$message."\n";
+            $message= "Can not write data to log file '".GLOG_SYSLOG."'!\nUnsaved data:\n".$message."\n";
             if ($_SERVER["HTTP_HOST"] == "localhost"){
-                die("<h2>".__FUNCTION__.": ".$subject."</h2><p>".$message."</p>");
+                die("Code: ".__FUNCTION__."-".__LINE__"- \"".$subject." - ".$message."\"");
             }else{
-            mail(EMAIL,$Subject,$message,$extraheader);
+                mail(EMAIL,$Subject,$message,$extraheader);
             };
+            
+            return false;
         };
 
-        return true;
-    } else {
-        return false;
+        $last_invokation_time = $invokation_time;
+        $last_memory_usage = $memory_usage;
     };
+    
+    return true;
 };
 
 function glog_isodate($date = "", $withTime = false) {				/* Принимает дату в формате "дд.мм.гггг" и возвращает в формате "гггг-мм-дд" */
@@ -198,6 +217,16 @@ function glog_period($start_date="", $end_date="", $sort = "asc"){   // Возв
     return $dates;
 }
 
+function glog_convert_size($size_in_bytes, $lang=""){
+    // source http://php.net/manual/ru/function.memory-get-usage.php#96280
+    
+    if ($lang == "RU"){
+        $unit=array('байт','Кб','Мб','Гб','Тб','Пб');
+    }else{
+        $unit=array('b','kb','mb','gb','tb','pb');
+    };
+    return @round($size/pow(1024,($i=floor(log($size,1024)))),2).' '.$unit[$i];
+}
 function glog_get_age($anketaORbirthdate, $add_units = false) { 				// Возвращает текущий возраст в формате строки "n" ($add_units = false) или "n лет" ($add_units = true). Принимает анкету.
     
     $age = "";
