@@ -38,8 +38,8 @@ function glog_dosyslog($message) {								// Пишет сообщение в с
     static $last_invokation_time;
     static $last_memory_usage;
     
-    if ( ! defined("GLOG_DO_SYSLOG") define("GLOG_DO_SYSLOG", false));
-    if ( ! defined("GLOG_DO_PROFILE") define("GLOG_DO_PROFILE", false));
+    if ( ! defined("GLOG_DO_SYSLOG")) define("GLOG_DO_SYSLOG", false);
+    if ( ! defined("GLOG_DO_PROFILE")) define("GLOG_DO_PROFILE", GLOG_DO_SYSLOG);
     
     if ( glog_get_msg_log_level($message) < glog_log_level() ) return false;
         
@@ -57,11 +57,17 @@ function glog_dosyslog($message) {								// Пишет сообщение в с
         $invokation_time = microtime(true);
         $memory_usage = memory_get_usage(true);
         
+        $time_change = round(($invokation_time - $last_invokation_time), 4);
+        $request_time_change = isset($_SERVER['REQUEST_TIME_FLOAT']) ? round(($invokation_time - $_SERVER['REQUEST_TIME_FLOAT']), 4) : 0;
+        $memory_change = $memory_usage-$last_memory_usage;
+        
         $data = array(
             @$_SERVER["REMOTE_ADDR"],
             date("Y-m-d\TH:i:s"),
-            GLOG_DO_PROFILE ? "+" . ($invokation_time - $last_invokation_time)."s" : "",
-            GLOG_DO_PROFILE ? glog_convert_size($memory_usage) . "(" . ($memory_usage > $last_memory_usage ? "+" :"") . ($memory_usage-$last_memory_usage) . "b)" : "",
+            GLOG_DO_PROFILE && $request_time_change ? $request_time_change."s" : "",
+            GLOG_DO_PROFILE ? $time_change."s" : "",
+            GLOG_DO_PROFILE ? glog_convert_size($memory_usage) : "",
+            GLOG_DO_PROFILE && $memory_change ? glog_convert_size($memory_change) : "",
             $message,
         );
            
@@ -73,7 +79,7 @@ function glog_dosyslog($message) {								// Пишет сообщение в с
             $extraheader = "Content-type: text/plain; charset=UTF-8";
             $message= "Can not write data to log file '".GLOG_SYSLOG."'!\nUnsaved data:\n".$message."\n";
             if ($_SERVER["HTTP_HOST"] == "localhost"){
-                die("Code: ".__FUNCTION__."-".__LINE__"- \"".$subject." - ".$message."\"");
+                die("Code: ".__FUNCTION__."-".__LINE__."- \"".$subject." - ".$message."\"");
             }else{
                 mail(EMAIL,$Subject,$message,$extraheader);
             };
@@ -225,7 +231,7 @@ function glog_convert_size($size_in_bytes, $lang=""){
     }else{
         $unit=array('b','kb','mb','gb','tb','pb');
     };
-    return @round($size/pow(1024,($i=floor(log($size,1024)))),2).' '.$unit[$i];
+    return @round($size_in_bytes/pow(1024,($i=floor(log(abs($size_in_bytes),1024)))),2).' '.$unit[$i];
 }
 function glog_get_age($anketaORbirthdate, $add_units = false) { 				// Возвращает текущий возраст в формате строки "n" ($add_units = false) или "n лет" ($add_units = true). Принимает анкету.
     
